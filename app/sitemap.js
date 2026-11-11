@@ -3,6 +3,11 @@ import { SITE } from '../lib/seo';
 const PAGES = [
   { path: '/', priority: 1, changeFrequency: 'daily' },
   { path: '/set-homepage', priority: 0.8, changeFrequency: 'monthly' },
+  { path: '/set-homepage/chrome', priority: 0.8, changeFrequency: 'monthly' },
+  { path: '/set-homepage/edge', priority: 0.8, changeFrequency: 'monthly' },
+  { path: '/set-homepage/360', priority: 0.8, changeFrequency: 'monthly' },
+  { path: '/set-homepage/qq', priority: 0.8, changeFrequency: 'monthly' },
+  { path: '/set-homepage/firefox', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/about', priority: 0.7, changeFrequency: 'monthly' },
   { path: '/guide', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/contact', priority: 0.5, changeFrequency: 'yearly' },
