@@ -2,14 +2,17 @@ import { cookies } from 'next/headers';
 import ShareHome from '../../components/ShareHome';
 import SiteFooter from '../../components/SiteFooter';
 import SiteHeader from '../../components/SiteHeader';
+import { pageMeta } from '../../lib/seo';
 import { findUserBySession } from '../../lib/users';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: '分享我的主页 - 哇塔主页',
-  robots: { index: false, follow: false },
-};
+export const metadata = pageMeta({
+  title: '分享我的主页：把上传的壁纸分享给别人 - 哇塔主页',
+  description:
+    '在哇塔主页生成分享链接，把你上传的壁纸分享给别人。对方打开后，壁纸库会出现「分享」，可预览和轮播；对方自己的「自选」仍然只放本人上传的壁纸。',
+  path: '/share',
+});
 
 function Frame({ children }) {
   return (
@@ -73,7 +76,23 @@ export default async function SharePage() {
   }
   if (failed) return <Frame><p>分享页暂时打不开，请稍后再试。</p></Frame>;
   if (!user) {
-    return <Frame><p>请先微信登录后再管理分享。<a href="/wechat/login?next=/share">微信登录</a></p></Frame>;
+    return (
+      <Frame>
+        <div className="share-panel">
+          <p className="share-note">
+            把你在<a href="/set-homepage/upload">上传壁纸</a>
+            里存好的图片分享出去。别人打开你的分享链接后，壁纸库会出现「分享」，可以预览和轮播这些壁纸；已经登录的人也一样，他的「自选」仍然只放他自己的壁纸。
+          </p>
+          <p className="share-note">
+            登录后可以创建、复制、停止或重新启用分享链接，并查看打开次数。
+          </p>
+          <p>
+            <a href="/wechat/login?next=/share">微信登录</a>
+            后再管理分享。
+          </p>
+        </div>
+      </Frame>
+    );
   }
   return <Frame><ShareHome /></Frame>;
 }
