@@ -1,5 +1,5 @@
 {
-  "name": "homepage",
+  "name": "whatab.com",
   "private": true,
   "scripts": {
     "dev": "next dev",
