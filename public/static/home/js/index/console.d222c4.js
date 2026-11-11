@@ -61,13 +61,11 @@ function paintWallpaper(node, url, thumb){
             return;
         }
         node.style.backgroundImage='url("'+imageUrl+'")';
-        if(isUserWallpaper(full)){
-            node.style.backgroundSize='contain';
-            node.style.backgroundColor='#111111';
-        }else{
-            node.style.backgroundSize='cover';
-            node.style.backgroundColor='transparent';
-        }
+        // 自选壁纸与内置库一致用 cover，避免 contain 在比例略偏时上下留黑边
+        node.style.backgroundSize='cover';
+        node.style.backgroundColor='transparent';
+        node.style.backgroundPosition='center center';
+        node.style.backgroundRepeat='no-repeat';
     }
     if(preview){
         rememberThumb(full, preview);
@@ -1316,9 +1314,9 @@ $('#console-title-box').click(function(){
                             }
                             oNewBgDiv.innerHTML="<a download href='"+full+"' class='set-pic-btn btn' target='_blank' title='下载壁纸'></a>";
                             oNewBgDiv.style.backgroundImage='url("'+preview+'")';
-                            if(previewCategory==='custom' || previewCategory==='share'){
-                                oNewBgDiv.style.backgroundSize='contain';
-                            }
+                            oNewBgDiv.style.backgroundSize='cover';
+                            oNewBgDiv.style.backgroundPosition='center center';
+                            oNewBgDiv.style.backgroundRepeat='no-repeat';
                             oNewBgDiv.style.height=((oBgPicWrap.clientWidth||320)/16*9)+'px';
                             oBgPicWrap.appendChild(oNewBgDiv);
                         }

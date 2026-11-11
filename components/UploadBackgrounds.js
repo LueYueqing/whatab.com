@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 
 const FREE_LIMIT = 20;
 const PAGE_SIZE = 48;
+// 与首页壁纸选择器预览框、常见桌面比例一致；勿用上传页 window 比例（与真正作背景时的视口常有偏差）
+const CROP_RATIO = 16 / 9;
 
 function cropFrame(width, height, ratio) {
   const fittedWidth = height * ratio;
@@ -89,7 +91,7 @@ function WallpaperCrop({ image, ratio, busy, error, hasPrev, hasNext, onPrev, on
   } : null;
 
   return (
-    <div className="crop-layer" role="dialog" aria-modal="true" aria-label="按首页比例裁剪">
+    <div className="crop-layer" role="dialog" aria-modal="true" aria-label="按 16:9 裁剪">
       <div className="crop-stage" style={natural ? { width: natural.width * scale, height: natural.height * scale } : undefined}>
         <img
           key={image.url}
@@ -128,7 +130,7 @@ function WallpaperCrop({ image, ratio, busy, error, hasPrev, hasNext, onPrev, on
               height: frame.height,
             })}
           >
-            {busy ? '裁剪中…' : '按比例裁剪'}
+            {busy ? '裁剪中…' : '按 16:9 裁剪'}
           </button>
           <button type="button" className="crop-delete" aria-label="删除这张图片" disabled={busy} onClick={onDelete}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -317,7 +319,7 @@ export default function UploadBackgrounds() {
     setCropError('');
     setViewer({
       image,
-      ratio: window.innerWidth / Math.max(window.innerHeight, 1),
+      ratio: CROP_RATIO,
     });
   }
 
@@ -329,7 +331,7 @@ export default function UploadBackgrounds() {
     setCropError('');
     setViewer({
       image,
-      ratio: window.innerWidth / Math.max(window.innerHeight, 1),
+      ratio: CROP_RATIO,
     });
   }
 
@@ -387,7 +389,7 @@ export default function UploadBackgrounds() {
       if (neighbor) {
         setViewer({
           image: neighbor,
-          ratio: window.innerWidth / Math.max(window.innerHeight, 1),
+          ratio: CROP_RATIO,
         });
       } else {
         setViewer(null);
@@ -526,7 +528,7 @@ export default function UploadBackgrounds() {
           <span>{progress.done}/{progress.total}</span>
         </div>
       ) : null}
-      <p className="upload-note">先选择图片，再点「上传」。支持 JPG、PNG、WEBP，单张不超过 8MB。</p>
+      <p className="upload-note">先选择图片，再点「上传」。支持 JPG、PNG、WEBP，单张不超过 8MB。点缩略图可按 16:9 裁剪；首页展示与内置壁纸一样铺满屏幕，不再留黑边。</p>
       {message ? <p className={/失败|最多|没有|请|还没有|暂时/.test(message) ? 'upload-message' : 'upload-note'}>{message}</p> : null}
       {renderPager()}
       <div className="upload-grid">
