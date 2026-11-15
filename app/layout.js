@@ -1,3 +1,4 @@
+import Script from 'next/script';
 import { BUILD_ID } from '../lib/build-id.mjs';
 import { HOME_DESCRIPTION, HOME_TITLE, SITE } from '../lib/seo';
 
@@ -22,7 +23,15 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="build" content={BUILD_ID} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Script
+          src="https://www.pvuv.ai/f.js"
+          strategy="afterInteractive"
+          data-site="jNX2mrMT"
+          data-api="https://in.pvuv.ai"
+        />
+      </body>
     </html>
   );
 }
