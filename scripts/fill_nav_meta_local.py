@@ -70,6 +70,16 @@ def ensure_columns(cur) -> None:
             "ALTER TABLE `nav_sites` ADD COLUMN `language` "
             "VARCHAR(8) NULL DEFAULT NULL COMMENT '语种如 zh/en'"
         )
+    cur.execute("SHOW COLUMNS FROM nav_sites LIKE 'visits_updated_at'")
+    if not cur.fetchone():
+        cur.execute(
+            "ALTER TABLE `nav_sites` ADD COLUMN `visits_updated_at` "
+            "DATETIME NULL DEFAULT NULL COMMENT '月访问量最近拉取时间'"
+        )
+        cur.execute(
+            "UPDATE nav_sites SET visits_updated_at = DATE_SUB(NOW(), INTERVAL 1 YEAR) "
+            "WHERE visits_updated_at IS NULL"
+        )
 
 
 def host_of(url: str) -> str:
@@ -268,19 +278,27 @@ def fill_visits(conn) -> None:
                     errors += 1
                     print(f"[visits] {host} 限流 {exc.code}，等待 60s 后重试", flush=True)
                     time.sleep(60)
-            if visits is None:
-                skipped += 1
-            else:
-                ids = by_host[host]
-                # 分批更新，避免超长 IN
-                for i in range(0, len(ids), 200):
-                    chunk = ids[i : i + 200]
-                    placeholders = ",".join(["%s"] * len(chunk))
+            ids = by_host[host]
+            # 有估值则写入；无论有无估值都打 visits_updated_at，避免常态任务反复打同一站
+            for i in range(0, len(ids), 200):
+                chunk = ids[i : i + 200]
+                placeholders = ",".join(["%s"] * len(chunk))
+                if visits is None:
                     cur.execute(
-                        f"UPDATE nav_sites SET monthly_visits = %s, updated_at = NOW() "
+                        f"UPDATE nav_sites SET visits_updated_at = NOW(), updated_at = NOW() "
+                        f"WHERE monthly_visits IS NULL AND id IN ({placeholders})",
+                        chunk,
+                    )
+                else:
+                    cur.execute(
+                        f"UPDATE nav_sites SET monthly_visits = %s, visits_updated_at = NOW(), "
+                        f"updated_at = NOW() "
                         f"WHERE monthly_visits IS NULL AND id IN ({placeholders})",
                         [visits, *chunk],
                     )
+            if visits is None:
+                skipped += 1
+            else:
                 filled_hosts += 1
             if index % 20 == 0 or index == len(hosts):
                 print(
