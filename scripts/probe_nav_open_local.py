@@ -60,7 +60,8 @@ def measure_open(url: str) -> tuple[bool, float | None, str]:
     target = (url or "").strip()
     if not target.lower().startswith(("http://", "https://")):
         return True, 0.0, "unsupported_url"
-    ctx = ssl.create_default_context()
+    # 探测只关心能不能打开，证书链不完整的站点在浏览器里往往也能开
+    ctx = ssl._create_unverified_context()
     req = urllib.request.Request(
         target,
         method="GET",
@@ -75,13 +76,14 @@ def measure_open(url: str) -> tuple[bool, float | None, str]:
             return True, min(999999.0, seconds), f"http_{resp.status}"
     except Exception as exc:  # noqa: BLE001
         name = type(exc).__name__
-        if isinstance(exc, socket.timeout) or "timed out" in str(exc).lower():
+        message = str(exc)
+        if isinstance(exc, socket.timeout) or "timed out" in message.lower():
             return False, None, "timeout"
         if isinstance(exc, urllib.error.HTTPError):
             # 有 HTTP 响应也算打开了
             seconds = round(time.perf_counter() - started, 3)
             return True, min(999999.0, seconds), f"http_{exc.code}"
-        return False, None, f"{name}:{str(exc)[:120]}"
+        return False, None, f"{name}:{message[:120]}"
 
 
 def main() -> int:
