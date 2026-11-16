@@ -10,6 +10,7 @@
   --admin-accent: #2c7bf6;
   --admin-danger: #b42318;
   --admin-ok: #067647;
+  --admin-warn: #b54708;
   --admin-font: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --admin-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -163,6 +164,16 @@ html:has(.admin-app) body {
   color: #fff;
 }
 .admin-btn.danger { color: var(--admin-danger); border-color: #f0c4c0; }
+.admin-btn.success {
+  color: var(--admin-ok);
+  border-color: #abefc6;
+  background: #ecfdf3;
+}
+.admin-btn.warn {
+  color: var(--admin-warn);
+  border-color: #f9dbaf;
+  background: #fffaeb;
+}
 .admin-btn:disabled { opacity: 0.45; cursor: default; }
 
 .admin-form, .admin-search { margin: 0 0 16px; }

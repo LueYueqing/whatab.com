@@ -635,7 +635,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                     <div className="admin-actions">
                       {fields.is_enabled !== false ? (
                         <button
-                          className="admin-btn"
+                          className={`admin-btn ${site.is_enabled ? 'warn' : 'success'}`}
                           type="button"
                           disabled={busy}
                           onClick={() => toggleSiteEnabled(site)}
