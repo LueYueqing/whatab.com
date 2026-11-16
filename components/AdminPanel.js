@@ -38,7 +38,7 @@ function Pager({ offset, total, pageSize, onPage }) {
 }
 
 function sectionTitle(tab) {
-  if (tab === 'categories') return ['网址分类', '对应首页导航分类栏。点「查看网址」进入该分类下的网址列表。'];
+  if (tab === 'categories') return ['网址分类', '可改名称与代号；改代号会同步已有网址、用户偏好和全站分类分享。点「查看网址」进入该分类列表。'];
   if (tab === 'wallpapers') return ['壁纸管理', '列表用缩略图，首页背景用原图。已在网站文件里的旧图可改标题或移除，不能改分类。'];
   return ['网址管理', '首页默认图标使用已启用的前 18 个。分类栏按热度展示对应分类网址。'];
 }
@@ -61,6 +61,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
   const [siteCategory, setSiteCategory] = useState(safeCategoryFromUrl);
   const [navCategories, setNavCategories] = useState([]);
   const [categoryStats, setCategoryStats] = useState([]);
+  const [categoryDrafts, setCategoryDrafts] = useState({});
   const [fields, setFields] = useState({ sort_order: true, popularity: true, is_enabled: true });
   const [wallpapers, setWallpapers] = useState([]);
   const [wallpaperTotal, setWallpaperTotal] = useState(0);
@@ -132,8 +133,13 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
         setNavCategories(data.categories || []);
         setFields(data.fields || {});
       } else if (tab === 'categories') {
-        setCategoryStats(data.categories || []);
-        setNavCategories((data.categories || []).map((item) => ({
+        const categories = data.categories || [];
+        setCategoryStats(categories);
+        setCategoryDrafts(Object.fromEntries(categories.map((item) => [
+          item.category,
+          { category: item.category, category_note: item.category_note },
+        ])));
+        setNavCategories(categories.map((item) => ({
           category: item.category,
           category_note: item.category_note,
         })));
@@ -322,6 +328,66 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
     }
   }
 
+  function patchCategoryDraft(code, patch) {
+    setCategoryDrafts((current) => ({
+      ...current,
+      [code]: { ...(current[code] || { category: code, category_note: '' }), ...patch },
+    }));
+  }
+
+  async function saveCategory(item) {
+    const draft = categoryDrafts[item.category] || {
+      category: item.category,
+      category_note: item.category_note,
+    };
+    const nextCode = String(draft.category || '').trim().toLowerCase();
+    const nextName = String(draft.category_note || '').trim();
+    if (!nextName) {
+      say('请填写分类名称');
+      return;
+    }
+    if (!/^[a-z0-9-]{1,32}$/.test(nextCode)) {
+      say('代号只能用小写字母、数字和连字符，最长 32 位');
+      return;
+    }
+    if (
+      nextCode === item.category
+      && nextName === item.category_note
+    ) {
+      say('没有改动', true);
+      return;
+    }
+    if (nextCode !== item.category) {
+      const okRename = window.confirm(
+        `将代号「${item.category}」改为「${nextCode}」？会同步更新该分类下的网址与相关分享。`,
+      );
+      if (!okRename) return;
+    }
+    setBusy(true);
+    say('');
+    try {
+      const result = await request('/home/admin/categories', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          category: item.category,
+          new_category: nextCode,
+          category_note: nextName,
+        }),
+      });
+      const touched = Number(result.sites_updated || 0);
+      say(touched ? `分类已保存，已同步 ${touched} 个网址` : '分类已保存', true);
+      if (siteCategory === item.category && nextCode !== item.category) {
+        setSiteCategory(nextCode);
+      }
+      setRevision((value) => value + 1);
+    } catch (error) {
+      say(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (needLogin) {
     return (
       <div className="admin-gate">
@@ -502,28 +568,65 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                     </tr>
                   </thead>
                   <tbody>
-                    {categoryStats.map((item) => (
-                      <tr key={item.category}>
-                        <td>{item.category_note}</td>
-                        <td><code>{item.category}</code></td>
-                        <td>{item.total}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="admin-btn"
-                            onClick={() => openSitesByCategory(item.category)}
-                          >
-                            查看网址
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {categoryStats.map((item) => {
+                      const draft = categoryDrafts[item.category] || {
+                        category: item.category,
+                        category_note: item.category_note,
+                      };
+                      const dirty = draft.category !== item.category
+                        || draft.category_note !== item.category_note;
+                      return (
+                        <tr key={item.category}>
+                          <td>
+                            <input
+                              className="admin-inline-input"
+                              value={draft.category_note}
+                              maxLength={40}
+                              disabled={busy}
+                              onChange={(event) => patchCategoryDraft(item.category, {
+                                category_note: event.target.value,
+                              })}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              className="admin-inline-input mono"
+                              value={draft.category}
+                              maxLength={32}
+                              disabled={busy}
+                              onChange={(event) => patchCategoryDraft(item.category, {
+                                category: event.target.value.toLowerCase(),
+                              })}
+                            />
+                          </td>
+                          <td>{item.total}</td>
+                          <td className="admin-actions">
+                            <button
+                              type="button"
+                              className="admin-btn primary"
+                              disabled={busy || !dirty}
+                              onClick={() => saveCategory(item)}
+                            >
+                              保存
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-btn"
+                              disabled={busy}
+                              onClick={() => openSitesByCategory(item.category)}
+                            >
+                              查看网址
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
               {!loading && !categoryStats.length ? <p className="admin-note">还没有分类数据。</p> : null}
               <p className="admin-note" style={{ marginTop: 14 }}>
-                分类代号与首页导航栏一致。给网址勾选分类后，用户即可在首页分类里看到。如「出海插件」对应 <code>plugins</code>，「搜索引擎外链」对应 <code>se-links</code>。
+                名称显示在首页分类栏；代号用于网址勾选与分享链接。改代号后请重新打开相关管理页核对。
               </p>
             </div>
           ) : null}

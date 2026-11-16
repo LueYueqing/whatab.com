@@ -13,22 +13,7 @@ async function postJson(path, body) {
   return data;
 }
 
-const SYSTEM_CATEGORIES = [
-  ['shopping', '购物'],
-  ['video', '视频'],
-  ['music', '音乐'],
-  ['news', '资讯'],
-  ['social', '社区'],
-  ['app', '应用'],
-  ['games', '游戏'],
-  ['life', '生活'],
-  ['read', '阅读'],
-  ['education', '教育'],
-  ['tech', '技术'],
-  ['ai', '人工智能'],
-  ['photos', '图片'],
-  ['sports', '运动'],
-  ['finance', '金融'],
+const FALLBACK_SYSTEM_CATEGORIES = [
   ['plugins', '出海插件'],
   ['se-links', '搜索引擎外链'],
   ['others', '其他'],
@@ -39,6 +24,7 @@ export default function ShareHome() {
   const [shares, setShares] = useState([]);
   const [catShares, setCatShares] = useState([]);
   const [personalCats, setPersonalCats] = useState([]);
+  const [systemCategories, setSystemCategories] = useState(FALLBACK_SYSTEM_CATEGORIES);
   const [sourceType, setSourceType] = useState('global');
   const [globalCode, setGlobalCode] = useState('plugins');
   const [personalId, setPersonalId] = useState('');
@@ -54,14 +40,26 @@ export default function ShareHome() {
   }
 
   async function loadCategory() {
-    const [shareData, catData] = await Promise.all([
+    const [shareData, catData, registry] = await Promise.all([
       postJson('/home/catshare/mine'),
       postJson('/home/site/categories', { action: 'list' }),
+      fetch('/home/nav/registry', { cache: 'no-store' }).then((res) => res.json()).catch(() => ({})),
     ]);
     setCatShares(Array.isArray(shareData.shares) ? shareData.shares : []);
     const cats = Array.isArray(catData.categories) ? catData.categories : [];
     setPersonalCats(cats);
     if (!personalId && cats[0]) setPersonalId(String(cats[0].id));
+    const registered = Array.isArray(registry.categories)
+      ? registry.categories
+        .map((item) => [String(item.category || ''), String(item.category_note || item.category || '')])
+        .filter(([code]) => /^[a-z0-9-]{1,32}$/.test(code))
+      : [];
+    if (registered.length) {
+      setSystemCategories(registered);
+      setGlobalCode((current) => (
+        registered.some(([code]) => code === current) ? current : registered[0][0]
+      ));
+    }
   }
 
   useEffect(() => {
@@ -109,7 +107,7 @@ export default function ShareHome() {
         ? {
           source_type: 'global',
           category_code: globalCode,
-          title: SYSTEM_CATEGORIES.find(([code]) => code === globalCode)?.[1] || globalCode,
+          title: systemCategories.find(([code]) => code === globalCode)?.[1] || globalCode,
         }
         : {
           source_type: 'personal',
@@ -261,7 +259,7 @@ export default function ShareHome() {
             </label>
             {sourceType === 'global' ? (
               <select value={globalCode} onChange={(event) => setGlobalCode(event.target.value)}>
-                {SYSTEM_CATEGORIES.map(([code, label]) => (
+                {systemCategories.map(([code, label]) => (
                   <option key={code} value={code}>{label}</option>
                 ))}
               </select>

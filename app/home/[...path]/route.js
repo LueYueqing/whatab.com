@@ -56,6 +56,7 @@ import {
   parsePersonalNavCode,
   personalNavCode,
 } from '../../../lib/category-shares';
+import { listNavCategoryRegistry } from '../../../lib/nav-categories';
 import { createVipOrder, FREE_UPLOAD_LIMIT, VIP_PRICE_YUAN } from '../../../lib/vip';
 
 export const dynamic = 'force-dynamic';
@@ -72,48 +73,6 @@ const CATEGORY_ORDER = [
   'tech',
   'street',
 ];
-
-const NAV_CATEGORY_ORDER = [
-  'shopping',
-  'video',
-  'music',
-  'news',
-  'social',
-  'app',
-  'games',
-  'life',
-  'read',
-  'education',
-  'tech',
-  'ai',
-  'photos',
-  'sports',
-  'finance',
-  'plugins',
-  'se-links',
-  'others',
-];
-
-const NAV_CATEGORY_NOTES = {
-  shopping: '购物',
-  video: '视频',
-  music: '音乐',
-  news: '资讯',
-  social: '社区',
-  app: '应用',
-  games: '游戏',
-  life: '生活',
-  read: '阅读',
-  education: '教育',
-  tech: '技术',
-  ai: '人工智能',
-  photos: '图片',
-  sports: '运动',
-  finance: '金融',
-  plugins: '出海插件',
-  'se-links': '搜索引擎外链',
-  others: '其他',
-};
 
 function readJson(name) {
   const file = path.join(process.cwd(), '_api', name);
@@ -141,10 +100,11 @@ function readCategoryList(value) {
   return [...new Set(source.map((item) => safeCategory(item)).filter(Boolean))];
 }
 
-function navCategoryNote(category, note) {
+function navCategoryNote(category, note, notes = {}) {
+  if (notes[category]) return notes[category];
   const text = String(note || '');
   if (/[\u4e00-\u9fff]/.test(text)) return text;
-  return NAV_CATEGORY_NOTES[category] || text || category;
+  return text || category;
 }
 
 async function listNavSites(userId = 0, categories = []) {
@@ -389,6 +349,9 @@ async function listNavCategorySites(category, offset, limit = 30) {
 
 async function listNavCategories() {
   const pool = getPool();
+  const registry = await listNavCategoryRegistry().catch(() => []);
+  const notes = Object.fromEntries(registry.map((item) => [item.category, item.category_note]));
+  const order = registry.map((item) => item.category);
   const [rows] = await pool.query(
     `SELECT cat.category AS category,
             MAX(note.category_note) AS category_note,
@@ -407,14 +370,14 @@ async function listNavCategories() {
   return rows
     .map((row) => ({
       category: safeCategory(row.category),
-      category_note: navCategoryNote(safeCategory(row.category), row.category_note),
+      category_note: navCategoryNote(safeCategory(row.category), row.category_note, notes),
       total: Number(row.total),
     }))
     .filter((row) => row.category)
     .sort((a, b) => {
-      const left = NAV_CATEGORY_ORDER.indexOf(a.category);
-      const right = NAV_CATEGORY_ORDER.indexOf(b.category);
-      return (left < 0 ? 99 : left) - (right < 0 ? 99 : right);
+      const left = order.indexOf(a.category);
+      const right = order.indexOf(b.category);
+      return (left < 0 ? 999 : left) - (right < 0 ? 999 : right);
     });
 }
 
@@ -790,6 +753,13 @@ async function handle(request, context) {
   }
   if (key === '/home/nav/categories') {
     return NextResponse.json(await listNavCategoriesForHome(request, user));
+  }
+  if (key === '/home/nav/registry') {
+    try {
+      return NextResponse.json({ categories: await listNavCategoryRegistry() });
+    } catch {
+      return NextResponse.json({ categories: [] });
+    }
   }
   if (key === '/home/nav/sites') {
     const fields = await readFields(request);
