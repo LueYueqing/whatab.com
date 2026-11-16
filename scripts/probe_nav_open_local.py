@@ -18,9 +18,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TIMEOUT = 8
-WORKERS = 12
-BATCH = 80
+TIMEOUT = int(os.environ.get("WA_OPEN_TIMEOUT", "8"))
+WORKERS = int(os.environ.get("WA_OPEN_WORKERS", "40"))
+BATCH = int(os.environ.get("WA_OPEN_BATCH", "200"))
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -131,7 +131,10 @@ def main() -> int:
                 """
             )
             missing = int(cur.fetchone()[0])
-            print(f"待探测约 {missing}", flush=True)
+            print(
+                f"待探测约 {missing}（并发 {WORKERS}，每批 {BATCH}，超时 {TIMEOUT}s）",
+                flush=True,
+            )
 
             after_id = 0
             while True:
