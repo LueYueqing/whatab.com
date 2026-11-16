@@ -24,6 +24,7 @@ function blankSite() {
     is_enabled: true,
     open_seconds: null,
     monthly_visits: null,
+    language: '',
   };
 }
 
@@ -74,6 +75,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
     is_enabled: true,
     open_seconds: true,
     monthly_visits: true,
+    language: true,
   });
   const [wallpapers, setWallpapers] = useState([]);
   const [wallpaperTotal, setWallpaperTotal] = useState(0);
@@ -683,6 +685,19 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                           />
                         </label>
                       ) : null}
+                      {fields.language !== false ? (
+                        <label>
+                          语种
+                          <select
+                            value={form.language || ''}
+                            onChange={(event) => setForm({ ...form, language: event.target.value })}
+                          >
+                            <option value="">未设置</option>
+                            <option value="zh">zh 中文</option>
+                            <option value="en">en 英文</option>
+                          </select>
+                        </label>
+                      ) : null}
                     </div>
                     {fields.is_enabled !== false ? (
                       <label className="admin-inline">
@@ -763,6 +778,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                           {siteSortLabel('monthly_visits', '月访')}
                         </button>
                       </th>
+                      <th>语种</th>
                       <th>操作</th>
                     </tr>
                   </thead>
@@ -789,6 +805,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                         <td className="admin-num">{formatOpenSeconds(site.open_seconds)}</td>
                         <td>{siteCategoryText(site)}</td>
                         <td className="admin-num">{formatMonthlyVisits(site.monthly_visits)}</td>
+                        <td>{site.language || '—'}</td>
                         <td>
                           <div className="admin-actions">
                             {fields.is_enabled !== false ? (
