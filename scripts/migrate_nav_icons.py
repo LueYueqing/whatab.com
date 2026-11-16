@@ -12,9 +12,11 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -37,46 +39,55 @@ def load_env_file(path: Path) -> None:
             os.environ[key] = value
 
 
-def mcp_call(token: str, name: str, arguments: dict | None = None) -> dict:
+def mcp_call(token: str, name: str, arguments: dict | None = None, retries: int = 5) -> dict:
     payload = {
         "jsonrpc": "2.0",
         "id": 1,
         "method": "tools/call",
         "params": {"name": name, "arguments": arguments or {}},
     }
-    req = urllib.request.Request(
-        MCP_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-            "Authorization": f"Bearer {token}",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        body = resp.read().decode("utf-8")
-    data = json.loads(body)
-    if data.get("error"):
-        raise RuntimeError(json.dumps(data["error"], ensure_ascii=False))
-    result = data.get("result") or {}
-    if result.get("isError"):
-        text = ""
-        for item in result.get("content") or []:
-            if item.get("type") == "text":
-                text = item.get("text") or text
-        raise RuntimeError(text or "MCP 工具返回错误")
-    text = ""
-    for item in result.get("content") or []:
-        if item.get("type") == "text":
-            text = item.get("text") or ""
-            break
-    if not text:
-        return {}
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return {"raw": text}
+    last_exc: Exception | None = None
+    for attempt in range(1, retries + 1):
+        req = urllib.request.Request(
+            MCP_URL,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+                "Authorization": f"Bearer {token}",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                body = resp.read().decode("utf-8")
+            data = json.loads(body)
+            if data.get("error"):
+                raise RuntimeError(json.dumps(data["error"], ensure_ascii=False))
+            result = data.get("result") or {}
+            if result.get("isError"):
+                text = ""
+                for item in result.get("content") or []:
+                    if item.get("type") == "text":
+                        text = item.get("text") or text
+                raise RuntimeError(text or "MCP 工具返回错误")
+            text = ""
+            for item in result.get("content") or []:
+                if item.get("type") == "text":
+                    text = item.get("text") or ""
+                    break
+            if not text:
+                return {}
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError:
+                return {"raw": text}
+        except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException) as exc:
+            last_exc = exc
+            wait = min(30, 2 * attempt)
+            print(f"MCP 调用中断（第 {attempt}/{retries} 次）：{exc}；{wait}s 后重试", flush=True)
+            time.sleep(wait)
+    raise RuntimeError(f"MCP 调用失败：{last_exc}")
 
 
 def is_external_icon(icon: str) -> bool:
