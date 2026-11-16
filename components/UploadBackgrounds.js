@@ -364,14 +364,8 @@ export default function UploadBackgrounds() {
         setCropError(data.error || '裁剪失败，请稍后再试');
         return;
       }
-      const stamp = Date.now();
-      const withStamp = (value) => {
-        const text = String(value || '');
-        if (!text) return text;
-        return `${text}${text.includes('?') ? '&' : '?'}v=${stamp}`;
-      };
-      const nextUrl = withStamp(data.url);
-      const nextThumb = withStamp(data.thumb || data.url);
+      const nextUrl = data.url;
+      const nextThumb = data.thumb || data.url;
       const imageId = viewer.image.id;
       setImages((list) => list.map((item) => (item.id === imageId ? { ...item, url: nextUrl, thumb: nextThumb } : item)));
       setViewer((current) => (current && current.image.id === imageId
