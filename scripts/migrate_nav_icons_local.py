@@ -17,21 +17,66 @@ import hmac
 import os
 import secrets
 import sys
-import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from email.utils import format_datetime
 from pathlib import Path
-from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKERS = int(os.environ.get("WA_ICON_WORKERS", "12"))
 BATCH = int(os.environ.get("WA_ICON_BATCH", "80"))
-TIMEOUT = 15
+TIMEOUT = 20
 MAX_BYTES = 2 * 1024 * 1024
 UA = "whatab-icon/1.0"
+
+
+def detect_download_proxy() -> str:
+    """外链图标下载可用系统代理；OSS 上传仍直连。"""
+    explicit = (
+        os.environ.get("WA_ICON_PROXY")
+        or os.environ.get("HTTPS_PROXY")
+        or os.environ.get("HTTP_PROXY")
+        or os.environ.get("https_proxy")
+        or os.environ.get("http_proxy")
+        or ""
+    ).strip()
+    if explicit:
+        return explicit
+    try:
+        import winreg
+
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+        )
+        enabled = int(winreg.QueryValueEx(key, "ProxyEnable")[0] or 0)
+        server = str(winreg.QueryValueEx(key, "ProxyServer")[0] or "").strip()
+        if enabled and server:
+            if "://" not in server:
+                server = f"http://{server}"
+            return server
+    except Exception:  # noqa: BLE001
+        pass
+    return ""
+
+
+DOWNLOAD_PROXY = ""
+
+
+def download_opener() -> urllib.request.OpenerDirector:
+    if DOWNLOAD_PROXY:
+        handler = urllib.request.ProxyHandler({
+            "http": DOWNLOAD_PROXY,
+            "https": DOWNLOAD_PROXY,
+        })
+        return urllib.request.build_opener(handler)
+    return urllib.request.build_opener()
+
+
+def direct_opener() -> urllib.request.OpenerDirector:
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def load_env_file(path: Path) -> None:
@@ -92,6 +137,9 @@ def needs_mirror(icon: str) -> bool:
         return False
     if is_own_icon(text):
         return False
+    # 明显坏链，别反复扫
+    if text.endswith("/undefined") or "/undefined?" in text:
+        return False
     if text.startswith("/static/") or text.startswith("/uploads/"):
         return True
     return text.lower().startswith(("http://", "https://"))
@@ -126,7 +174,7 @@ def download_icon(url: str) -> tuple[bytes, str]:
         text,
         headers={"User-Agent": UA, "Accept": "image/*,*/*;q=0.8"},
     )
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+    with download_opener().open(req, timeout=TIMEOUT) as resp:
         data = resp.read(MAX_BYTES + 1)
         content_type = resp.headers.get("Content-Type") or ""
     if not data:
@@ -164,8 +212,9 @@ def put_oss(data: bytes, content_type: str) -> str:
         headers=headers,
         method="PUT",
     )
+    opener = direct_opener()
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
+        with opener.open(req, timeout=20) as resp:
             if resp.status != 200:
                 raise RuntimeError(f"上传失败 HTTP {resp.status}")
     except urllib.error.HTTPError as exc:
@@ -189,7 +238,7 @@ def put_oss(data: bytes, content_type: str) -> str:
             headers=headers,
             method="PUT",
         )
-        with urllib.request.urlopen(req, timeout=20) as resp:
+        with opener.open(req, timeout=20) as resp:
             if resp.status != 200:
                 raise RuntimeError(f"上传失败 HTTP {resp.status}")
     base = (cfg["picnan"] or f"https://{cfg['host']}" or cfg["domain"]).rstrip("/")
@@ -212,8 +261,10 @@ def migrate_one(row: tuple) -> tuple[str, int, str]:
 
 
 def main() -> int:
+    global DOWNLOAD_PROXY
     load_env_file(ROOT / ".env")
     load_env_file(ROOT / ".env.local")
+    DOWNLOAD_PROXY = detect_download_proxy()
     try:
         import pymysql
     except ImportError:
@@ -251,7 +302,21 @@ def main() -> int:
                 """
             )
             missing = int(cur.fetchone()[0])
-            print(f"待转存约 {missing}（并发 {WORKERS}，每批 {BATCH}）", flush=True)
+            # 清掉明显无效的 infinity undefined 图标，避免反复失败
+            cur.execute(
+                """
+                UPDATE nav_sites
+                SET logo = '', icon_url = ''
+                WHERE COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE '%%/undefined'
+                   OR COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE '%%/undefined?%%'
+                """
+            )
+            cleared = cur.rowcount
+            print(
+                f"待转存约 {missing}（并发 {WORKERS}，每批 {BATCH}，"
+                f"下载代理 {DOWNLOAD_PROXY or '无'}，清坏链 {cleared}）",
+                flush=True,
+            )
 
             after_id = 0
             round_no = 0
