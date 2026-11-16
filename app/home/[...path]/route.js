@@ -76,6 +76,7 @@ const NAV_CATEGORY_ORDER = [
   'photos',
   'sports',
   'finance',
+  'plugins',
   'others',
 ];
 
@@ -95,6 +96,7 @@ const NAV_CATEGORY_NOTES = {
   photos: '图片',
   sports: '运动',
   finance: '金融',
+  plugins: '出海插件',
   others: '其他',
 };
 
@@ -202,7 +204,8 @@ function safeCategory(value) {
 async function homepageSiteData(user, categories) {
   if (user) {
     try {
-      const personal = await listUserSites(user.id);
+      // 带个人分类的网址留给分类管理，不直接摊进首页导航栏
+      const personal = (await listUserSites(user.id)).filter((item) => item.category_id == null);
       if (personal.length) return personal;
     } catch {
       /* 个人网址读失败时仍显示公共网址 */
