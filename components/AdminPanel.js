@@ -380,7 +380,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
       )));
       if (form.id === site.id) setForm((current) => ({ ...current, is_enabled: next }));
       say(next ? `已启用「${site.title}」` : `已停用「${site.title}」`, true);
-      if (siteStatus === 'enabled' || siteStatus === 'disabled' || siteStatus === 'alive') {
+      if (siteStatus === 'enabled' || siteStatus === 'disabled') {
         setRevision((value) => value + 1);
       }
     } catch (error) {
