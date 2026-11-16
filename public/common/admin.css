@@ -157,9 +157,8 @@
 
 .admin-form, .admin-search { margin: 0 0 16px; }
 .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.admin-form label, .admin-search { display: block; color: var(--admin-muted); font-size: 13px; }
+.admin-form label { display: block; color: var(--admin-muted); font-size: 13px; }
 .admin-form input, .admin-form textarea, .admin-form select,
-.admin-search input, .admin-search select,
 .admin-photo input, .admin-photo select {
   display: block;
   width: 100%;
@@ -177,8 +176,42 @@
 .admin-checks label, .admin-inline { display: flex; align-items: center; gap: 6px; color: var(--admin-ink); }
 .admin-checks input, .admin-inline input { width: auto; margin: 0; }
 .admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.admin-search { display: flex; gap: 8px; align-items: center; }
-.admin-search input, .admin-search select { margin-top: 0; }
+.admin-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+.admin-search input,
+.admin-search select {
+  display: block;
+  box-sizing: border-box;
+  margin-top: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  color: var(--admin-ink);
+  background: var(--admin-surface);
+  font: inherit;
+}
+.admin-search select {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 7.5em;
+  max-width: 14em;
+}
+.admin-search input {
+  flex: 1 1 12em;
+  width: auto;
+  min-width: 10em;
+  max-width: 18em;
+}
+.admin-search .admin-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
 
 .admin-list { display: flex; flex-direction: column; gap: 10px; }
 .admin-site {

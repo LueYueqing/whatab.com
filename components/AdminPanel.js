@@ -540,18 +540,22 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                 <label>图片<input name="file" type="file" accept="image/jpeg,image/png,image/webp" /></label>
                 <button className="admin-btn primary" disabled={busy} type="submit">上传壁纸</button>
               </form>
-              <label className="admin-search">
-                分类
-                <select value={wallpaperCategory} onChange={(event) => {
-                  setWallpaperCategory(event.target.value);
-                  setWallpaperOffset(0);
-                }}>
+              <div className="admin-search">
+                <span>分类</span>
+                <select
+                  value={wallpaperCategory}
+                  aria-label="壁纸分类"
+                  onChange={(event) => {
+                    setWallpaperCategory(event.target.value);
+                    setWallpaperOffset(0);
+                  }}
+                >
                   <option value="">全部</option>
                   {wallpaperCategories.map((item) => (
                     <option key={item.category} value={item.category}>{item.category_note}（{item.total}）</option>
                   ))}
                 </select>
-              </label>
+              </div>
               {loading ? <p className="admin-note">正在读取…</p> : null}
               <div className="admin-photos">
                 {wallpapers.map((item) => (
