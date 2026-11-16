@@ -40,7 +40,7 @@ function Pager({ offset, total, pageSize, onPage }) {
 function sectionTitle(tab) {
   if (tab === 'categories') return ['网址分类', '可改名称与代号；改代号会同步已有网址、用户偏好和全站分类分享。点「查看网址」进入该分类列表。'];
   if (tab === 'wallpapers') return ['壁纸管理', '列表用缩略图，首页背景用原图。已在网站文件里的旧图可改标题或移除，不能改分类。'];
-  return ['网址管理', '首页默认图标使用已启用的前 18 个。分类栏按热度展示对应分类网址。'];
+  return ['网址管理', '首页默认图标使用已启用的前 18 个。外链图标保存时会转存到自有 OSS，也可点「转存图标到 OSS」批量处理。'];
 }
 
 export default function AdminPanel({ name, section = 'sites', initialCategory = '' }) {
@@ -232,7 +232,37 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
       });
       setForm(blankSite());
       setEditorOpen(false);
-      say('网址已保存', true);
+      say('网址已保存（外链图标会尽量转存到 OSS）', true);
+      setRevision((value) => value + 1);
+    } catch (error) {
+      say(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function migrateIcons() {
+    if (!window.confirm('把仍指向外部网站的图标批量转存到自有 OSS？可多次执行直到完成。')) return;
+    setBusy(true);
+    say('');
+    let afterId = 0;
+    let migrated = 0;
+    let failed = 0;
+    let rounds = 0;
+    try {
+      while (rounds < 200) {
+        rounds += 1;
+        const result = await request('/home/admin/sites', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'migrate_icons', limit: 40, after_id: afterId }),
+        });
+        migrated += Number(result.migrated || 0);
+        failed += Number(result.failed || 0);
+        afterId = Number(result.after_id || afterId);
+        if (result.done) break;
+      }
+      say(`图标转存完成：成功 ${migrated}，失败 ${failed}`, failed === 0);
       setRevision((value) => value + 1);
     } catch (error) {
       say(error.message);
@@ -440,7 +470,10 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
               <p>{lead}</p>
             </div>
             {tab === 'sites' ? (
-              <button className="admin-btn primary" type="button" onClick={() => openEditor(null)}>添加网址</button>
+              <div className="admin-actions">
+                <button className="admin-btn" type="button" disabled={busy} onClick={migrateIcons}>转存图标到 OSS</button>
+                <button className="admin-btn primary" type="button" onClick={() => openEditor(null)}>添加网址</button>
+              </div>
             ) : null}
           </div>
 
@@ -463,7 +496,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                         <button className="admin-btn" type="button" disabled={collecting || busy} onClick={() => collectIcon(true)}>采集图标</button>
                       </span>
                     </label>
-                    <p className="admin-note">采集会读取网页图标；Chrome 应用店条目会优先用扩展图标。</p>
+                    <p className="admin-note">采集会读取网页图标并转存到自有 OSS；Chrome 应用店条目会优先用扩展图标。</p>
                     {form.icon ? <img className="admin-icon-preview" src={form.icon} alt="" /> : null}
                     <label>关键词<input value={form.keyword} onChange={(event) => setForm({ ...form, keyword: event.target.value })} /></label>
                     <label>说明<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={2} /></label>
