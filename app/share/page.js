@@ -7,17 +7,17 @@ import { findUserBySession } from '../../lib/users';
 export const dynamic = 'force-dynamic';
 
 export const metadata = pageMeta({
-  title: '分享壁纸与网址分类 - 哇塔主页',
+  title: '分享网址分类 - 哇塔主页',
   description:
-    '在哇塔主页生成壁纸分享或网址分类分享链接。壁纸分享让对方在壁纸库看到「分享」；分类分享让对方首页出现临时分类并实时同步，登录后可另存为自己的分类。',
+    '生成网址分类分享链接。对方打开后首页会出现临时分类并实时同步，登录后可另存为自己的分类。壁纸分享请到上传壁纸页。',
   path: '/share',
 });
 
 function Shell({ children }) {
   return (
     <InnerShell
-      title="分享壁纸与分类"
-      lead="壁纸分享与网址分类分享分开管理：一个改对方壁纸库，一个只在首页加临时分类。"
+      title="分享网址分类"
+      lead="把系统分类或你的个人分类分享出去。对方首页会出现临时分类；壁纸分享请到上传壁纸页。"
       current="/share"
       variant="tool"
     >
@@ -26,22 +26,6 @@ function Shell({ children }) {
         .share-note { color: var(--inner-muted); line-height: 1.7; }
         .share-message { color: var(--inner-ok); }
         .share-message.bad { color: var(--inner-danger); }
-        .share-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-        .share-tab {
-          border: 1px solid var(--inner-line);
-          border-radius: 999px;
-          padding: 6px 14px;
-          background: var(--inner-surface);
-          color: var(--inner-muted);
-          cursor: pointer;
-          font: inherit;
-          font-size: 13px;
-        }
-        .share-tab.active {
-          background: var(--inner-accent);
-          border-color: var(--inner-accent);
-          color: #fff;
-        }
         .share-form {
           display: flex;
           flex-wrap: wrap;
@@ -118,12 +102,12 @@ export default async function SharePage() {
       <Shell>
         <div className="share-panel">
           <p className="share-note">
-            登录后可管理两类分享：壁纸分享（对方壁纸库出现「分享」），以及网址分类分享（对方首页出现临时分类，可另存）。
+            登录后可分享网址分类：对方首页会出现临时分类，内容实时同步，登录后可另存。
           </p>
           <p className="share-note">
-            壁纸来自
+            壁纸分享请到
             <a href="/set-homepage/upload">上传壁纸</a>
-            ；个人网址分类可在首页「自定义」里管理。
+            。
           </p>
           <p>
             <a className="inner-btn primary" href="/wechat/login?next=/share">微信登录</a>

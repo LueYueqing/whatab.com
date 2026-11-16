@@ -6,6 +6,7 @@ const SECTION_TITLE = {
   sites: '网址管理',
   categories: '网址分类',
   wallpapers: '壁纸管理',
+  mcp: 'MCP 接入',
 };
 
 export async function generateMetadata({ params }) {

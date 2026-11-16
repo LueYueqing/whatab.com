@@ -111,8 +111,7 @@ export default function McpSetup({ userName, isAdmin }) {
   return (
     <div className="mcp-setup">
       <p className="mcp-lead">
-        你好，{userName || '用户'}。用密钥把哇塔主页接到 Cursor 等 MCP 客户端后，可以管理个人网址分类、网址和自选壁纸
-        {isAdmin ? '；你还是管理员，可管理全站导航与壁纸库' : ''}。
+        你好，{userName || '管理员'}。用密钥把哇塔主页接到 Cursor 等 MCP 客户端后，可管理个人网址分类、网址、自选壁纸，以及全站导航与壁纸库。
       </p>
 
       <section className="mcp-card">
@@ -174,11 +173,7 @@ export default function McpSetup({ userName, isAdmin }) {
           <li>个人网址分类：列出 / 创建 / 更新 / 删除</li>
           <li>个人网址：列出 / 创建 / 更新 / 删除（可指定分类）</li>
           <li>个人壁纸：列出 / 用图片 URL 添加 / 删除（本地文件请到上传页）</li>
-          {isAdmin ? (
-            <li>管理员：全站导航分类与网址、全站壁纸库的增删改查</li>
-          ) : (
-            <li>管理全站内容需要管理员账号</li>
-          )}
+          <li>管理员：全站导航分类与网址、全站壁纸库的增删改查</li>
         </ul>
       </section>
     </div>

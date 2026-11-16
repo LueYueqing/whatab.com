@@ -44,9 +44,11 @@ export default function GuidePage() {
 
       <Section id="z6" title="分享壁纸或网址分类">
         <p>
-          首页右下角可快速生成<strong>壁纸分享</strong>链接；打开
-          <a href="/share">分享页</a>
-          可分别管理壁纸分享与网址分类分享。都需要先登录。
+          首页右下角可快速生成<strong>壁纸分享</strong>链接；到
+          <a href="/set-homepage/upload">上传壁纸</a>
+          可管理壁纸与壁纸分享。网址分类分享在
+          <a href="/share">分享分类</a>
+          。都需要先登录。
         </p>
         <p>
           壁纸分享：别人打开

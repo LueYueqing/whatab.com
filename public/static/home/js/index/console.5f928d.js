@@ -273,7 +273,7 @@ function consolejs(uiData){
             box.style.cssText='position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
             var card=document.createElement('div');
             card.style.cssText='width:min(440px,calc(100% - 32px));background:#fff;color:#333;border-radius:12px;padding:20px;line-height:1.6;';
-            card.innerHTML='<div style="font-size:16px;margin-bottom:8px;">分享壁纸</div><p id="share-link-note" style="margin:0 0 8px;font-size:13px;color:#666;"></p><input id="share-link-input" readonly style="width:100%;box-sizing:border-box;margin:8px 0;padding:8px;border:1px solid #ddd;border-radius:8px;color:#333;"><p id="share-link-stat" style="margin:0 0 8px;font-size:13px;color:#666;"></p><div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;"><a id="share-manage-link" href="/share" style="margin-right:auto;color:#2c7bf6;">管理壁纸/分类分享</a><button type="button" id="share-copy-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#2c7bf6;color:#fff;cursor:pointer;">复制链接</button><button type="button" id="share-close-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#f2f2f2;color:#333;cursor:pointer;">关闭</button></div>';
+            card.innerHTML='<div style="font-size:16px;margin-bottom:8px;">分享壁纸</div><p id="share-link-note" style="margin:0 0 8px;font-size:13px;color:#666;"></p><input id="share-link-input" readonly style="width:100%;box-sizing:border-box;margin:8px 0;padding:8px;border:1px solid #ddd;border-radius:8px;color:#333;"><p id="share-link-stat" style="margin:0 0 8px;font-size:13px;color:#666;"></p><div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;"><a id="share-manage-link" href="/set-homepage/upload" style="margin-right:auto;color:#2c7bf6;">管理壁纸分享</a><a href="/share" style="color:#2c7bf6;">分类分享</a><button type="button" id="share-copy-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#2c7bf6;color:#fff;cursor:pointer;">复制链接</button><button type="button" id="share-close-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#f2f2f2;color:#333;cursor:pointer;">关闭</button></div>';
             box.appendChild(card);
             document.body.appendChild(box);
             box.addEventListener('click', function(event){
@@ -298,8 +298,8 @@ function consolejs(uiData){
             };
         }
         document.getElementById('share-link-note').textContent=data.reused
-            ? '这是你正在使用的壁纸分享链接。要新建、停止，或分享网址分类，请打开「管理壁纸/分类分享」。'
-            : '已生成壁纸分享链接。别人打开后，壁纸库里会出现「分享」。若要分享网址分类，请到分享页的「分类分享」。';
+            ? '这是你正在使用的壁纸分享链接。要新建或停止，请打开「管理壁纸分享」；分享网址分类请到「分类分享」。'
+            : '已生成壁纸分享链接。别人打开后，壁纸库里会出现「分享」。若要分享网址分类，请打开「分类分享」。';
         document.getElementById('share-link-input').value=data.url||'';
         document.getElementById('share-link-stat').textContent=data.open_count
             ? ('已打开 '+data.open_count+' 次'+(data.last_opened_at ? '，最近 '+data.last_opened_at : ''))

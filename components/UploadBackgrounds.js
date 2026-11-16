@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import WallpaperSharePanel from './WallpaperSharePanel';
 
 const FREE_LIMIT = 20;
 const PAGE_SIZE = 48;
@@ -508,7 +509,7 @@ export default function UploadBackgrounds() {
         </div>
         {qr ? <img className="vip-qr" src={qr} alt="支付二维码" /> : null}
       </div>
-      <p>上传后，在首页壁纸设置里选择「自选」，网址导航就会轮播这些壁纸。也可以到<a href="/share">分享页</a>创建壁纸分享链接；网址分类分享也在同一页。</p>
+      <p>上传后，在首页壁纸设置里选择「自选」，网址导航就会轮播这些壁纸。本页下方可创建壁纸分享链接；网址分类分享请到 <a href="/share">分享分类</a>。</p>
       <div className="upload-row">
         <label className={`upload-btn${busy || images.length >= limit ? ' disabled' : ''}`}>
           选择图片
@@ -581,6 +582,7 @@ export default function UploadBackgrounds() {
           onDelete={() => deleteViewerImage().catch(() => setCropError('删除失败，请稍后再试'))}
         />
       ) : null}
+      <WallpaperSharePanel />
     </div>
   );
 }

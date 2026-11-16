@@ -442,6 +442,69 @@ html:has(.admin-app) body {
   white-space: nowrap;
 }
 .admin-sites-table tr.is-disabled { opacity: 0.72; background: #f7f8fa; }
+.admin-mcp .mcp-setup { color: var(--admin-ink); max-width: 720px; }
+.admin-mcp .mcp-lead { line-height: 1.75; color: var(--admin-muted); margin: 0 0 20px; }
+.admin-mcp .mcp-card {
+  margin: 0 0 22px;
+  padding: 18px 0 4px;
+  border-top: 1px solid var(--admin-line);
+}
+.admin-mcp .mcp-card:first-child { border-top: 0; padding-top: 0; }
+.admin-mcp .mcp-card h2 {
+  font-size: 1.05rem;
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+.admin-mcp .mcp-card p,
+.admin-mcp .mcp-card li { line-height: 1.7; color: var(--admin-muted); }
+.admin-mcp .mcp-card ul { padding-left: 1.2em; margin: 8px 0 0; }
+.admin-mcp .mcp-meta { font-size: 13px; color: var(--admin-muted); }
+.admin-mcp .mcp-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+.admin-mcp .mcp-btn {
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  padding: 8px 14px;
+  background: #fff;
+  color: var(--admin-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+.admin-mcp .mcp-btn.primary { background: var(--admin-accent); border-color: var(--admin-accent); color: #fff; }
+.admin-mcp .mcp-btn.danger { color: var(--admin-danger); border-color: #f0c4c0; }
+.admin-mcp .mcp-btn:disabled { opacity: 0.45; cursor: default; }
+.admin-mcp .mcp-token-box {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 12px;
+  background: #eef1f4;
+  border: 1px solid var(--admin-line);
+  border-radius: 10px;
+}
+.admin-mcp .mcp-token-box code,
+.admin-mcp .mcp-code {
+  flex: 1;
+  min-width: 200px;
+  word-break: break-all;
+  white-space: pre-wrap;
+  font-family: var(--admin-mono, ui-monospace, Menlo, Consolas, monospace);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--admin-ink);
+}
+.admin-mcp .mcp-code {
+  display: block;
+  margin: 12px 0;
+  padding: 14px;
+  background: #eef1f4;
+  border: 1px solid var(--admin-line);
+  border-radius: 10px;
+  overflow: auto;
+}
+.admin-mcp .mcp-message { color: var(--admin-danger); margin-top: 8px; }
 .admin-sort-btn {
   border: 0;
   background: transparent;

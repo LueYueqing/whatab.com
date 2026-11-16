@@ -5,26 +5,31 @@ import { findUserBySession, readSessionToken } from '../../../../lib/users';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-async function currentUser(request) {
-  return findUserBySession(readSessionToken(request));
+async function currentAdmin(request) {
+  const user = await findUserBySession(readSessionToken(request));
+  if (!user) return { error: NextResponse.json({ error: '请先微信登录' }, { status: 401 }) };
+  if (!user.is_admin) {
+    return { error: NextResponse.json({ error: '仅管理员可管理 MCP 密钥' }, { status: 403 }) };
+  }
+  return { user };
 }
 
 export async function GET(request) {
-  const user = await currentUser(request);
-  if (!user) return NextResponse.json({ error: '请先微信登录' }, { status: 401 });
-  const meta = await getMcpKeyMeta(user.id);
+  const gate = await currentAdmin(request);
+  if (gate.error) return gate.error;
+  const meta = await getMcpKeyMeta(gate.user.id);
   return NextResponse.json({
     has_key: Boolean(meta),
     prefix: meta?.prefix || '',
     created_at: meta?.created_at || '',
     last_used_at: meta?.last_used_at || '',
-    is_admin: Boolean(user.is_admin),
+    is_admin: true,
   });
 }
 
 export async function POST(request) {
-  const user = await currentUser(request);
-  if (!user) return NextResponse.json({ error: '请先微信登录' }, { status: 401 });
+  const gate = await currentAdmin(request);
+  if (gate.error) return gate.error;
   let action = 'issue';
   try {
     const body = await request.json();
@@ -33,10 +38,10 @@ export async function POST(request) {
     action = 'issue';
   }
   if (action === 'revoke') {
-    await revokeMcpKey(user.id);
+    await revokeMcpKey(gate.user.id);
     return NextResponse.json({ success: 1, revoked: true });
   }
-  const issued = await issueMcpKey(user.id);
+  const issued = await issueMcpKey(gate.user.id);
   return NextResponse.json({
     success: 1,
     token: issued.token,

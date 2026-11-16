@@ -3,7 +3,7 @@ import UploadBackgrounds from '../../../components/UploadBackgrounds';
 
 export const metadata = {
   title: '上传壁纸 - 哇塔主页',
-  description: '登录后上传自己的壁纸。首页选择「自选」会轮播这些图片，也可以到分享主页把它们分享给别人。',
+  description: '登录后上传自己的壁纸，并在本页创建壁纸分享链接。首页选择「自选」会轮播这些图片。',
   robots: { index: false, follow: false },
 };
 
@@ -11,7 +11,7 @@ export default function UploadPage() {
   return (
     <InnerShell
       title="上传壁纸"
-      lead="登录后上传自己的壁纸。首页选择「自选」会轮播这些图片，也可以到分享主页把它们分享给别人。"
+      lead="登录后上传自己的壁纸；本页也可创建壁纸分享链接。首页选择「自选」会轮播这些图片。"
       current="/set-homepage/upload"
       variant="tool"
     >
@@ -219,6 +219,42 @@ export default function UploadPage() {
           padding: 4px 10px;
           background: rgba(255,255,255,0.92);
           cursor: pointer;
+        }
+        .wall-share {
+          margin-top: 28px;
+          padding-top: 22px;
+          border-top: 1px solid var(--inner-line);
+        }
+        .wall-share h2 {
+          margin: 0 0 8px;
+          font-size: 1.05rem;
+          font-weight: 600;
+        }
+        .wall-share-note { color: var(--inner-muted); margin: 0 0 12px; }
+        .wall-share-list { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+        .wall-share-item {
+          padding: 12px;
+          background: var(--inner-surface);
+          border: 1px solid var(--inner-line);
+          border-radius: 10px;
+        }
+        .wall-share-item input {
+          display: block;
+          width: 100%;
+          box-sizing: border-box;
+          padding: 8px 10px;
+          border: 1px solid var(--inner-line);
+          border-radius: 8px;
+          color: var(--inner-ink);
+          font: inherit;
+        }
+        .wall-share-meta, .wall-share-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px 14px;
+          margin-top: 8px;
+          color: var(--inner-muted);
+          font-size: 13px;
         }
       `}</style>
       <UploadBackgrounds />

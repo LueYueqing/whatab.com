@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import McpSetup from './McpSetup';
 
 const MENUS = [
   ['sites', '网址管理'],
   ['categories', '网址分类'],
   ['wallpapers', '壁纸管理'],
+  ['mcp', 'MCP'],
 ];
 
 function blankSite() {
@@ -43,6 +45,7 @@ function Pager({ offset, total, pageSize, onPage }) {
 function sectionTitle(tab) {
   if (tab === 'categories') return ['网址分类', '「默认」(default) 是首页图标清单；其它分类可改名、改代号或删除（删除只去标签，不删网址）。'];
   if (tab === 'wallpapers') return ['壁纸管理', '列表用缩略图，首页背景用原图。已在网站文件里的旧图可改标题或移除，不能改分类。'];
+  if (tab === 'mcp') return ['MCP 接入', '生成密钥，把哇塔接到 Cursor 等 MCP 客户端；仅管理员可用。'];
   return ['网址管理', '列表显示启用状态、打开耗时与月访问量。未启用前台不可见，可随时再启用。'];
 }
 
@@ -132,6 +135,10 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
 
   useEffect(() => {
     let ignore = false;
+    if (tab === 'mcp') {
+      setLoading(false);
+      return undefined;
+    }
     setLoading(true);
     const url = tab === 'sites'
       ? `/home/admin/sites?offset=${siteOffset}&q=${encodeURIComponent(siteQuery)}&category=${encodeURIComponent(siteCategory)}&status=${encodeURIComponent(siteStatus)}&sort_by=${encodeURIComponent(siteSortBy)}&sort_dir=${encodeURIComponent(siteSortDir)}`
@@ -576,7 +583,6 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
             {sideOpen ? '收起菜单' : '菜单'}
           </button>
           <a href="/">回首页</a>
-          <a href="/mcp">MCP</a>
         </div>
       </header>
 
@@ -996,6 +1002,12 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
               </div>
               {!loading && !wallpapers.length ? <p className="admin-note">这个分类还没有壁纸。</p> : null}
               <Pager offset={wallpaperOffset} total={wallpaperTotal} pageSize={wallpaperPage} onPage={setWallpaperOffset} />
+            </div>
+          ) : null}
+
+          {tab === 'mcp' ? (
+            <div className="admin-panel admin-mcp">
+              <McpSetup userName={name} isAdmin />
             </div>
           ) : null}
         </main>
