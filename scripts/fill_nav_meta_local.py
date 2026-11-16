@@ -321,16 +321,39 @@ def main() -> int:
         return 1
 
     only = ONLY if ONLY in {"all", "lang", "visits"} else "all"
-    conn = connect()
+    # 先建列，避免并行线程各自 ALTER
+    bootstrap = connect()
     try:
-        with conn.cursor() as cur:
+        with bootstrap.cursor() as cur:
             ensure_columns(cur)
-        if only in {"all", "lang"}:
-            fill_languages(conn)
-        if only in {"all", "visits"}:
-            fill_visits(conn)
     finally:
-        conn.close()
+        bootstrap.close()
+
+    def run_lang() -> None:
+        conn = connect()
+        try:
+            fill_languages(conn)
+        finally:
+            conn.close()
+
+    def run_visits() -> None:
+        conn = connect()
+        try:
+            fill_visits(conn)
+        finally:
+            conn.close()
+
+    if only == "all":
+        print("[meta] 语种与月访并行补填", flush=True)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(run_lang), pool.submit(run_visits)]
+            for fut in as_completed(futures):
+                fut.result()
+        return 0
+    if only == "lang":
+        run_lang()
+        return 0
+    run_visits()
     return 0
 
 
