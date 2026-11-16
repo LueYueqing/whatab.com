@@ -242,11 +242,11 @@ def main() -> int:
                 SELECT COUNT(*) FROM nav_sites
                 WHERE (
                   (
-                    COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE 'http%'
-                    AND COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) NOT LIKE '%/nav-icons/%'
+                    COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE 'http%%'
+                    AND COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) NOT LIKE '%%/nav-icons/%%'
                   )
-                  OR COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE '/static/%'
-                  OR COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE '/uploads/%'
+                  OR COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE '/static/%%'
+                  OR COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE '/uploads/%%'
                 )
                 """
             )
@@ -263,11 +263,11 @@ def main() -> int:
                     WHERE id > %s
                       AND (
                         (
-                          COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE 'http%'
-                          AND COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) NOT LIKE '%/nav-icons/%'
+                          COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE 'http%%'
+                          AND COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) NOT LIKE '%%/nav-icons/%%'
                         )
-                        OR COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE '/static/%'
-                        OR COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE '/uploads/%'
+                        OR COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE '/static/%%'
+                        OR COALESCE(NULLIF(logo, ''), NULLIF(icon_url, '')) LIKE '/uploads/%%'
                       )
                     ORDER BY id ASC
                     LIMIT %s
