@@ -241,7 +241,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
       });
       setForm(blankSite());
       setEditorOpen(false);
-      say('网址已保存（外链图标会尽量转存到 OSS）', true);
+      say('网址已保存', true);
       setRevision((value) => value + 1);
     } catch (error) {
       say(error.message);
