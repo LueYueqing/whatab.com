@@ -46,7 +46,7 @@ function sectionTitle(tab) {
   if (tab === 'categories') return ['网址分类', '「默认」(default) 是首页图标清单；其它分类可改名、改代号或删除（删除只去标签，不删网址）。'];
   if (tab === 'wallpapers') return ['壁纸管理', '列表用缩略图，首页背景用原图。已在网站文件里的旧图可改标题或移除，不能改分类。'];
   if (tab === 'mcp') return ['MCP 接入', '生成密钥，把哇塔接到 Cursor 等 MCP 客户端；仅管理员可用。'];
-  return ['网址管理', '列表显示启用状态、打开耗时与月访问量。未启用前台不可见，可随时再启用。'];
+  return ['网址管理', '列表显示启用状态、打开耗时与月访问量。停用仅前台隐藏；删除会从库里彻底去掉，不可恢复。'];
 }
 
 export default function AdminPanel({ name, section = 'sites', initialCategory = '' }) {
@@ -400,6 +400,26 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
       if (siteStatus === 'enabled' || siteStatus === 'disabled') {
         setRevision((value) => value + 1);
       }
+    } catch (error) {
+      say(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function purgeSite(site) {
+    if (!window.confirm(`彻底删除「${site.title}」？会从数据库删掉，不可恢复。`)) return;
+    setBusy(true);
+    say('');
+    try {
+      await request('/home/admin/sites', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'purge', id: site.id }),
+      });
+      if (form.id === site.id) dismissEditor();
+      say(`已删除「${site.title}」`, true);
+      setRevision((value) => value + 1);
     } catch (error) {
       say(error.message);
     } finally {
@@ -833,6 +853,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                               </button>
                             ) : null}
                             <button className="admin-btn" type="button" onClick={() => openEditor(site)}>编辑</button>
+                            <button className="admin-btn danger" type="button" disabled={busy} onClick={() => purgeSite(site)}>删除</button>
                           </div>
                         </td>
                       </tr>
