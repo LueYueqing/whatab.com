@@ -24,9 +24,16 @@ export function GET(request) {
   const state = createOAuthState();
   const response = NextResponse.redirect(authorizeUrl(state));
   response.cookies.set('wechat_state', state, cookieOptions());
-  const next = new URL(request.url).searchParams.get('next');
-  if (next === '/set-homepage/upload' || next === '/share' || isAdminNextPath(next)) {
-    response.cookies.set('wa_next', next === '/admin' ? '/admin/sites' : next, cookieOptions());
+  const next = new URL(request.url).searchParams.get('next') || '';
+  const pathOnly = next.split('?')[0];
+  const allowed = pathOnly === '/set-homepage/upload'
+    || pathOnly === '/my-sites'
+    || pathOnly === '/share'
+    || pathOnly === '/edit-home'
+    || isAdminNextPath(pathOnly);
+  if (allowed) {
+    const target = pathOnly === '/admin' ? '/admin/sites' : next;
+    response.cookies.set('wa_next', target, cookieOptions());
   }
   return response;
 }

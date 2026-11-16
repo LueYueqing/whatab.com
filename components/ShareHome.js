@@ -150,7 +150,7 @@ export default function ShareHome() {
         链接后，首页分类栏会出现临时分类，内容实时同步你的源；登录后可另存为自己的个人分类。不会改对方的壁纸。
         壁纸分享请到
         {' '}
-        <a href="/set-homepage/upload">上传壁纸</a>
+        <a href="/set-homepage/upload?tab=share">上传壁纸</a>
         。
       </p>
       <div className="share-form">

@@ -1,17 +1,42 @@
+import { Suspense } from 'react';
 import InnerShell from '../../../components/InnerShell';
-import UploadBackgrounds from '../../../components/UploadBackgrounds';
+import UploadHome from '../../../components/UploadHome';
 
 export const metadata = {
   title: '上传壁纸 - 哇塔主页',
-  description: '登录后上传自己的壁纸，并在本页创建壁纸分享链接。首页选择「自选」会轮播这些图片。',
+  description: '登录后上传并管理自己的壁纸，或在本页创建壁纸分享链接。首页选择「自选」会轮播这些图片。',
   robots: { index: false, follow: false },
 };
+
+const TAB_STYLE = `
+  .tool-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 18px;
+  }
+  .tool-tab {
+    border: 1px solid var(--inner-line);
+    border-radius: 999px;
+    padding: 6px 14px;
+    background: var(--inner-surface);
+    color: var(--inner-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+  }
+  .tool-tab.active {
+    background: var(--inner-accent);
+    border-color: var(--inner-accent);
+    color: #fff;
+  }
+`;
 
 export default function UploadPage() {
   return (
     <InnerShell
       title="上传壁纸"
-      lead="登录后上传自己的壁纸；本页也可创建壁纸分享链接。首页选择「自选」会轮播这些图片。"
+      lead="管理自选壁纸，或创建壁纸分享链接。首页选择「自选」会轮播你上传的图片。"
       current="/set-homepage/upload"
       variant="tool"
     >
@@ -119,84 +144,36 @@ export default function UploadPage() {
           max-width: calc(100vw - 64px);
           max-height: calc(100vh - 64px);
         }
-        .crop-stage > img {
-          display: block;
-          max-width: calc(100vw - 64px);
-          max-height: calc(100vh - 64px);
-          user-select: none;
-        }
-        .crop-box {
+        .crop-stage img { display: block; max-width: 100%; max-height: calc(100vh - 64px); }
+        .crop-frame {
           position: absolute;
-          z-index: 2;
-          box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
-          outline: 2px solid #fff;
-          outline-offset: -2px;
-          touch-action: none;
+          border: 2px solid #fff;
+          box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+          cursor: grab;
         }
-        .crop-box.x { cursor: ew-resize; }
-        .crop-box.y { cursor: ns-resize; }
-        .crop-nav {
+        .crop-toolbar {
           position: absolute;
-          z-index: 4;
-          top: 50%;
-          width: 42px;
-          height: 42px;
-          margin-top: -21px;
-          border: 0;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.92);
-          color: #333;
-          font-size: 28px;
-          line-height: 42px;
-          cursor: pointer;
+          left: 50%;
+          bottom: 16px;
+          transform: translateX(-50%);
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          justify-content: center;
         }
-        .crop-nav.prev { left: 16px; }
-        .crop-nav.next { right: 16px; }
-        .crop-nav:disabled { opacity: 0.35; cursor: default; }
-        .crop-close, .crop-apply {
+        .crop-toolbar button {
           border: 0;
           border-radius: 100px;
-          padding: 8px 16px;
-          cursor: pointer;
-        }
-        .crop-close {
-          position: absolute;
-          z-index: 4;
-          top: 16px;
-          left: 16px;
+          padding: 8px 14px;
           background: rgba(255,255,255,0.92);
-          color: #333;
-        }
-        .crop-actions {
-          position: absolute;
-          z-index: 4;
-          top: 16px;
-          right: 16px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .crop-apply { background: var(--inner-accent); color: #fff; }
-        .crop-apply:disabled, .crop-delete:disabled { opacity: 0.45; cursor: default; }
-        .crop-delete {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 36px;
-          height: 36px;
-          padding: 0;
-          border: 0;
-          border-radius: 50%;
-          background: #d92d20;
           cursor: pointer;
+          font: inherit;
         }
-        .crop-delete svg { width: 18px; height: 18px; fill: #fff; display: block; }
         .crop-error {
           position: absolute;
-          z-index: 3;
-          left: 12px;
-          right: 12px;
-          bottom: 12px;
+          left: 50%;
+          top: 16px;
+          transform: translateX(-50%);
           margin: 0;
           color: #fff;
           text-align: center;
@@ -220,17 +197,8 @@ export default function UploadPage() {
           background: rgba(255,255,255,0.92);
           cursor: pointer;
         }
-        .wall-share {
-          margin-top: 28px;
-          padding-top: 22px;
-          border-top: 1px solid var(--inner-line);
-        }
-        .wall-share h2 {
-          margin: 0 0 8px;
-          font-size: 1.05rem;
-          font-weight: 600;
-        }
-        .wall-share-note { color: var(--inner-muted); margin: 0 0 12px; }
+        .wall-share { color: var(--inner-ink); }
+        .wall-share-note { color: var(--inner-muted); margin: 0 0 12px; line-height: 1.7; }
         .wall-share-list { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
         .wall-share-item {
           padding: 12px;
@@ -256,8 +224,11 @@ export default function UploadPage() {
           color: var(--inner-muted);
           font-size: 13px;
         }
+        ${TAB_STYLE}
       `}</style>
-      <UploadBackgrounds />
+      <Suspense fallback={<p>正在加载…</p>}>
+        <UploadHome />
+      </Suspense>
     </InnerShell>
   );
 }

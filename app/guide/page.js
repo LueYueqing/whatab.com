@@ -46,8 +46,8 @@ export default function GuidePage() {
         <p>
           首页右下角可快速生成<strong>壁纸分享</strong>链接；到
           <a href="/set-homepage/upload">上传壁纸</a>
-          可管理壁纸与壁纸分享。网址分类分享在
-          <a href="/share">分享分类</a>
+          （「分享壁纸」页签）管理壁纸分享。网址分类分享在
+          <a href="/my-sites?tab=share">我的网址</a>
           。都需要先登录。
         </p>
         <p>
@@ -71,7 +71,7 @@ export default function GuidePage() {
         <p>
           默认主页图标请到
           {' '}
-          <a href="/edit-home">编辑默认主页链接</a>
+          <a href="/my-sites">我的网址</a>
           {' '}
           管理：可从系统库搜索加入，也可自行录入（输入网址后自动采集图标）。首页右键「编辑图标链接」也会进入该页。
         </p>

@@ -3,10 +3,16 @@ import { BUILD_ID } from './lib/build-id.mjs';
 
 const APEX = 'whatab.com';
 const PAGE_CACHE = 'public, max-age=31536000';
-const SKIP = /^\/(?:_next|home|wechat|vip|uploads|static|common|_ext|admin|share)(?:\/|$)|^(?:\/qqlogin|\/links)$/;
+const SKIP = /^\/(?:_next|home|wechat|vip|uploads|static|common|_ext|admin|share|my-sites|edit-home)(?:\/|$)|^(?:\/qqlogin|\/links)$/;
 
 function cachePage(response, pathname) {
-  if (pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/share' || pathname.startsWith('/share/')) {
+  if (
+    pathname === '/admin' || pathname.startsWith('/admin/')
+    || pathname === '/share' || pathname.startsWith('/share/')
+    || pathname === '/my-sites' || pathname.startsWith('/my-sites/')
+    || pathname === '/edit-home' || pathname.startsWith('/edit-home/')
+    || pathname === '/set-homepage/upload'
+  ) {
     response.headers.set('Cache-Control', 'private, no-store');
     return response;
   }

@@ -12,12 +12,15 @@ function home(request, reason) {
   const origin = forwarded
     ? `${proto}://${forwarded.split(',')[0].trim()}`
     : new URL(request.url).origin;
-  const requested = request.cookies?.get('wa_next')?.value;
-  const allowedNext = requested === '/set-homepage/upload'
-    || requested === '/share'
-    || isAdminNextPath(requested);
+  const requested = request.cookies?.get('wa_next')?.value || '';
+  const pathOnly = requested.split('?')[0];
+  const allowedNext = pathOnly === '/set-homepage/upload'
+    || pathOnly === '/my-sites'
+    || pathOnly === '/share'
+    || pathOnly === '/edit-home'
+    || isAdminNextPath(pathOnly);
   const nextPath = !reason && allowedNext
-    ? (requested === '/admin' ? '/admin/sites' : requested)
+    ? (pathOnly === '/admin' ? '/admin/sites' : requested)
     : '/';
   const url = new URL(nextPath, origin);
   if (reason) url.searchParams.set('wechat', reason);

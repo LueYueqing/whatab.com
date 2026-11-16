@@ -108,7 +108,7 @@ function site(){
         var actions=document.createElement('div');
         actions.style.cssText='display:flex;gap:12px;justify-content:flex-end;align-items:center;';
         var create=document.createElement('a');
-        create.href='/share';
+        create.href='/my-sites?tab=share';
         create.textContent='创建我的壁纸并分享';
         create.style.color='#2c7bf6';
         var ok=document.createElement('button');
@@ -533,11 +533,11 @@ function site(){
     //点击网站编辑按钮--------------------------  
     $('.console-siteset-btn').click(function(){
         if(userData['user_type']==0){//用户未登录,弹出登录界面
-            try{ sessionStorage.setItem('wa_login_next','/edit-home'); }catch(e){}
+            try{ sessionStorage.setItem('wa_login_next','/my-sites'); }catch(e){}
             $('#loginBlackBg').css('display','block');
             return false;
         }
-        window.location.href='/edit-home';
+        window.location.href='/my-sites';
         return false;
     });
 

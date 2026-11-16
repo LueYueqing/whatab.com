@@ -103,12 +103,11 @@ export default function WallpaperSharePanel() {
 
   return (
     <section className="wall-share">
-      <h2>分享我的壁纸</h2>
       <p className="wall-share-note">
         生成链接后，别人打开会在壁纸库看到「分享」，可预览和轮播你上传的图。对方的「自选」仍只放他自己的壁纸。
-        网址分类分享请到
+        先在「壁纸管理」上传图片；网址分类分享请到
         {' '}
-        <a href="/share">分享分类</a>
+        <a href="/my-sites?tab=share">我的网址</a>
         。
       </p>
       <button className="upload-submit" type="button" onClick={createShare} disabled={busy}>
