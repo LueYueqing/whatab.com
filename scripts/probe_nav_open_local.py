@@ -2,7 +2,7 @@
 """本机探测 nav_sites 打开耗时并直连 RDS 写库（GitHub/MCP 部署不可用时的补跑路径）。
 
 依赖：pip install pymysql
-读取项目根 .env 的 DB_*。打不开则软删除。
+读取项目根 .env 的 DB_*。打不开则停用（is_enabled=0）并写 open_seconds=60。
 """
 
 from __future__ import annotations
@@ -50,12 +50,20 @@ def ensure_columns(cur) -> None:
             "ALTER TABLE `nav_sites` ADD COLUMN `open_seconds` "
             "DECIMAL(10,3) NULL DEFAULT NULL COMMENT '打开耗时秒'"
         )
-    cur.execute("SHOW COLUMNS FROM nav_sites LIKE 'is_deleted'")
+    cur.execute("SHOW COLUMNS FROM nav_sites LIKE 'is_enabled'")
     if not cur.fetchone():
         cur.execute(
-            "ALTER TABLE `nav_sites` ADD COLUMN `is_deleted` "
-            "TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删除'"
+            "ALTER TABLE `nav_sites` ADD COLUMN `is_enabled` "
+            "TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用'"
         )
+    # 存量软删迁成未启用（列可能仍在，但代码不再依赖）
+    cur.execute("SHOW COLUMNS FROM nav_sites LIKE 'is_deleted'")
+    if cur.fetchone():
+        cur.execute(
+            "UPDATE nav_sites SET is_enabled = 0, updated_at = NOW() "
+            "WHERE is_deleted = 1 AND (is_enabled = 1 OR is_enabled IS NULL)"
+        )
+        cur.execute("UPDATE nav_sites SET is_deleted = 0 WHERE is_deleted = 1")
 
 
 def measure_open(url: str) -> tuple[bool, float | None, str]:
@@ -121,14 +129,14 @@ def main() -> int:
         print(f"连接数据库失败：{exc}", file=sys.stderr)
         return 1
 
-    probed = soft_deleted = skipped = failed = 0
+    probed = disabled = skipped = failed = 0
     try:
         with conn.cursor() as cur:
             ensure_columns(cur)
             cur.execute(
                 """
                 SELECT COUNT(*) FROM nav_sites
-                WHERE (is_deleted = 0 OR is_deleted IS NULL)
+                WHERE (is_enabled = 1 OR is_enabled IS NULL)
                   AND open_seconds IS NULL
                 """
             )
@@ -144,7 +152,7 @@ def main() -> int:
                     """
                     SELECT id, url FROM nav_sites
                     WHERE id > %s
-                      AND (is_deleted = 0 OR is_deleted IS NULL)
+                      AND (is_enabled = 1 OR is_enabled IS NULL)
                       AND open_seconds IS NULL
                     ORDER BY id ASC
                     LIMIT %s
@@ -180,14 +188,18 @@ def main() -> int:
                             probed += 1
                     else:
                         cur.execute(
-                            "UPDATE nav_sites SET open_seconds = %s, is_deleted = 1, updated_at = NOW() WHERE id = %s",
+                            "UPDATE nav_sites SET open_seconds = %s, is_enabled = 0, "
+                            "updated_at = NOW() WHERE id = %s",
                             (FAIL_SECONDS, site_id),
                         )
-                        soft_deleted += 1
-                        print(f"软删 id={site_id} {detail} open_seconds={FAIL_SECONDS}", flush=True)
+                        disabled += 1
+                        print(
+                            f"停用 id={site_id} {detail} open_seconds={FAIL_SECONDS}",
+                            flush=True,
+                        )
 
                 print(
-                    f"after_id={after_id} 累计测到={probed} 累计软删={soft_deleted} "
+                    f"after_id={after_id} 累计测到={probed} 累计停用={disabled} "
                     f"跳过={skipped} 本批={len(rows)}",
                     flush=True,
                 )
@@ -199,7 +211,7 @@ def main() -> int:
         conn.close()
 
     print(
-        f"完成：测到 {probed}，软删 {soft_deleted}，跳过 {skipped}，失败 {failed}",
+        f"完成：测到 {probed}，停用 {disabled}，跳过 {skipped}，失败 {failed}",
         flush=True,
     )
     return 0

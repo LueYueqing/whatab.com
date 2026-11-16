@@ -56,7 +56,7 @@ import {
   parsePersonalNavCode,
   personalNavCode,
 } from '../../../lib/category-shares';
-import { ensureNavSiteExtras, navSiteNotDeletedSql } from '../../../lib/admin';
+import { ensureNavSiteExtras, navSiteEnabledSql } from '../../../lib/admin';
 import {
   DEFAULT_HOME_CATEGORY,
   listNavCategoryRegistry,
@@ -120,7 +120,7 @@ async function listNavSites(userId = 0, categories = []) {
   const orderBy = selected.length && !isDefaultHome
     ? 'popularity DESC, sort_order ASC, id ASC'
     : 'sort_order ASC, id ASC';
-  const alive = `AND ${navSiteNotDeletedSql()}`;
+  const alive = `AND ${navSiteEnabledSql()}`;
   const sql = selected.length
     ? `SELECT title, keyword, url, description, logo, icon_url, img_name,
               category, category_note, source, country, popularity, is_pinned,
@@ -365,7 +365,7 @@ async function listNavCategorySites(category, offset, limit = 30) {
      FROM nav_sites
      WHERE (user_id = 0 OR user_id IS NULL)
        AND is_enabled = 1
-       AND ${navSiteNotDeletedSql()}
+       AND ${navSiteEnabledSql()}
        AND JSON_CONTAINS(category, JSON_QUOTE(?))
      ORDER BY popularity DESC, id ASC
      LIMIT ? OFFSET ?`,
@@ -397,8 +397,7 @@ async function listNavCategories() {
        ord FOR ORDINALITY,
        category_note VARCHAR(64) PATH '$'
      )) note ON note.ord = cat.ord
-     WHERE ${navSiteNotDeletedSql('n')}
-       AND (n.is_enabled = 1 OR n.is_enabled IS NULL)
+     WHERE ${navSiteEnabledSql('n')}
      GROUP BY cat.category`,
   );
   return rows

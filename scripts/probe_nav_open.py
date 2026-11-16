@@ -115,13 +115,13 @@ def main() -> int:
 
     stats = wait_for_tool(token)
     print(
-        f"待探测约 {stats.get('missing')} / 存活 {stats.get('alive')} "
-        f"（已测 {stats.get('probed')}，已删 {stats.get('deleted')}）",
+        f"待探测约 {stats.get('missing')} / 启用 {stats.get('alive')} "
+        f"（已测 {stats.get('probed')}，未启用 {stats.get('disabled', stats.get('deleted'))}）",
         flush=True,
     )
 
     after_id = 0
-    probed = soft_deleted = skipped = failed = 0
+    probed = disabled = skipped = failed = 0
     for round_no in range(1, 5001):
         result = mcp_call(
             token,
@@ -130,19 +130,19 @@ def main() -> int:
                 "limit": 6,
                 "after_id": after_id,
                 "timeout_ms": 8000,
-                "soft_delete": True,
+                "disable_on_fail": True,
             },
         )
         probed += int(result.get("probed") or 0)
-        soft_deleted += int(result.get("soft_deleted") or 0)
+        disabled += int(result.get("disabled") or result.get("soft_deleted") or 0)
         skipped += int(result.get("skipped") or 0)
         failed += int(result.get("failed") or 0)
         after_id = int(result.get("after_id") or after_id)
         print(
             f"#{round_no} scanned={result.get('scanned')} "
-            f"probed={result.get('probed')} soft_deleted={result.get('soft_deleted')} "
+            f"probed={result.get('probed')} disabled={result.get('disabled', result.get('soft_deleted'))} "
             f"skipped={result.get('skipped')} failed={result.get('failed')} "
-            f"after_id={after_id} 累计测到={probed} 累计软删={soft_deleted}",
+            f"after_id={after_id} 累计测到={probed} 累计停用={disabled}",
             flush=True,
         )
         for item in result.get("errors") or []:
@@ -159,7 +159,7 @@ def main() -> int:
 
     after = mcp_call(token, "count_nav_open_stats")
     print(
-        f"完成：测到 {probed}，软删 {soft_deleted}，跳过 {skipped}，失败 {failed}；"
+        f"完成：测到 {probed}，停用 {disabled}，跳过 {skipped}，失败 {failed}；"
         f"剩余未测约 {after.get('missing')}，已测 {after.get('probed')}",
         flush=True,
     )
