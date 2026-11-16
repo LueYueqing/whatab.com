@@ -38,7 +38,7 @@ function Pager({ offset, total, pageSize, onPage }) {
 }
 
 function sectionTitle(tab) {
-  if (tab === 'categories') return ['网址分类', '可改名称与代号；改代号会同步已有网址、用户偏好和全站分类分享。点「查看网址」进入该分类列表。'];
+  if (tab === 'categories') return ['网址分类', '可改名称与代号，也可删除。删除不会删网址，只会去掉该分类标签。'];
   if (tab === 'wallpapers') return ['壁纸管理', '列表用缩略图，首页背景用原图。已在网站文件里的旧图可改标题或移除，不能改分类。'];
   return ['网址管理', '首页默认图标使用已启用的前 18 个。外链图标保存时会转存到自有 OSS，也可点「转存图标到 OSS」批量处理。'];
 }
@@ -387,6 +387,33 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
     }));
   }
 
+  async function removeCategory(item) {
+    const count = Number(item.total || 0);
+    const okDelete = window.confirm(
+      count
+        ? `删除分类「${item.category_note || item.category}」？不会删除网址，只会从 ${count} 个网址上去掉这个分类标签。`
+        : `删除分类「${item.category_note || item.category}」？`,
+    );
+    if (!okDelete) return;
+    setBusy(true);
+    say('');
+    try {
+      const result = await request('/home/admin/categories', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'remove', category: item.category }),
+      });
+      const touched = Number(result.sites_updated || 0);
+      say(touched ? `分类已删除，已从 ${touched} 个网址上移除该标签` : '分类已删除', true);
+      if (siteCategory === item.category) setSiteCategory('');
+      setRevision((value) => value + 1);
+    } catch (error) {
+      say(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveCategory(item) {
     const draft = categoryDrafts[item.category] || {
       category: item.category,
@@ -685,6 +712,14 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                               onClick={() => openSitesByCategory(item.category)}
                             >
                               查看网址
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-btn danger"
+                              disabled={busy}
+                              onClick={() => removeCategory(item)}
+                            >
+                              删除
                             </button>
                           </td>
                         </tr>
