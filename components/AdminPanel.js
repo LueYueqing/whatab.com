@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+const MENUS = [
+  ['sites', '网址管理'],
+  ['categories', '网址分类'],
+  ['wallpapers', '壁纸管理'],
+];
 
 function blankSite() {
   return {
@@ -29,6 +35,12 @@ function Pager({ offset, total, pageSize, onPage }) {
   );
 }
 
+function sectionTitle(tab) {
+  if (tab === 'categories') return ['网址分类', '对应首页导航分类栏。点「查看网址」进入该分类下的网址列表。'];
+  if (tab === 'wallpapers') return ['壁纸管理', '列表用缩略图，首页背景用原图。已在网站文件里的旧图可改标题或移除，不能改分类。'];
+  return ['网址管理', '首页默认图标使用已启用的前 18 个。分类栏按热度展示对应分类网址。'];
+}
+
 export default function AdminPanel({ name }) {
   const [tab, setTab] = useState('sites');
   const [form, setForm] = useState(blankSite);
@@ -42,6 +54,7 @@ export default function AdminPanel({ name }) {
   const [draftQuery, setDraftQuery] = useState('');
   const [siteCategory, setSiteCategory] = useState('');
   const [navCategories, setNavCategories] = useState([]);
+  const [categoryStats, setCategoryStats] = useState([]);
   const [fields, setFields] = useState({ sort_order: true, popularity: true, is_enabled: true });
   const [wallpapers, setWallpapers] = useState([]);
   const [wallpaperTotal, setWallpaperTotal] = useState(0);
@@ -57,6 +70,9 @@ export default function AdminPanel({ name }) {
   const [message, setMessage] = useState('');
   const [ok, setOk] = useState(false);
   const [needLogin, setNeedLogin] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false);
+
+  const [title, lead] = useMemo(() => sectionTitle(tab), [tab]);
 
   function say(text, good = false) {
     setMessage(text || '');
@@ -74,12 +90,31 @@ export default function AdminPanel({ name }) {
     return data;
   }
 
+  function openSection(next) {
+    setTab(next);
+    setMessage('');
+    setEditorOpen(false);
+    setSideOpen(false);
+    if (next === 'sites') setSiteOffset(0);
+    if (next === 'wallpapers') setWallpaperOffset(0);
+  }
+
+  function openSitesByCategory(category) {
+    setSiteCategory(category || '');
+    setSiteOffset(0);
+    setSiteQuery('');
+    setDraftQuery('');
+    openSection('sites');
+  }
+
   useEffect(() => {
     let ignore = false;
     setLoading(true);
     const url = tab === 'sites'
       ? `/home/admin/sites?offset=${siteOffset}&q=${encodeURIComponent(siteQuery)}&category=${encodeURIComponent(siteCategory)}`
-      : `/home/admin/wallpapers?offset=${wallpaperOffset}&category=${encodeURIComponent(wallpaperCategory)}`;
+      : (tab === 'categories'
+        ? '/home/admin/categories'
+        : `/home/admin/wallpapers?offset=${wallpaperOffset}&category=${encodeURIComponent(wallpaperCategory)}`);
     request(url).then((data) => {
       if (ignore) return;
       if (tab === 'sites') {
@@ -88,6 +123,12 @@ export default function AdminPanel({ name }) {
         setSitePage(Number(data.page_size || 20));
         setNavCategories(data.categories || []);
         setFields(data.fields || {});
+      } else if (tab === 'categories') {
+        setCategoryStats(data.categories || []);
+        setNavCategories((data.categories || []).map((item) => ({
+          category: item.category,
+          category_note: item.category_note,
+        })));
       } else {
         const categories = data.categories || [];
         setWallpapers(data.wallpapers || []);
@@ -274,186 +315,271 @@ export default function AdminPanel({ name }) {
   }
 
   if (needLogin) {
-    return <p>请先登录。<a href="/wechat/login?next=/admin">微信登录</a></p>;
+    return (
+      <div className="admin-gate">
+        <p>请先登录。</p>
+        <p><a className="admin-btn primary" href="/wechat/login?next=/admin">微信登录</a></p>
+      </div>
+    );
   }
 
   return (
-    <div className="admin-panel">
-      <p className="admin-note">当前管理员：{name}。这里改的是全站网址和壁纸库。</p>
-      <div className="admin-tabs">
-        <button type="button" className={tab === 'sites' ? 'admin-tab active' : 'admin-tab'} onClick={() => setTab('sites')}>网址</button>
-        <button type="button" className={tab === 'wallpapers' ? 'admin-tab active' : 'admin-tab'} onClick={() => setTab('wallpapers')}>壁纸</button>
-      </div>
-      {!editorOpen && message ? <p className={ok ? 'admin-message ok' : 'admin-message'}>{message}</p> : null}
+    <div className="admin-app">
+      <header className="admin-top">
+        <a className="admin-top-brand" href="/admin">
+          <img src="/static/home/images/logo_text.svg" alt="" />
+          <span>管理后台</span>
+        </a>
+        <div className="admin-top-meta">管理员 {name}</div>
+        <div className="admin-top-links">
+          <button
+            type="button"
+            className="admin-btn admin-menu-toggle"
+            onClick={() => setSideOpen((value) => !value)}
+          >
+            {sideOpen ? '收起菜单' : '菜单'}
+          </button>
+          <a href="/">回首页</a>
+          <a href="/mcp">MCP</a>
+        </div>
+      </header>
 
-      {tab === 'sites' ? (
-        <>
-          <p className="admin-note">首页默认图标使用已启用的前 18 个，按排序从小到大。分类栏（含出海插件）按热度展示对应分类网址。</p>
-          <div className="admin-actions">
-            <button className="admin-btn primary" type="button" onClick={() => openEditor(null)}>添加网址</button>
-          </div>
-          {editorOpen ? (
-            <div className="admin-modal" onClick={closeEditor}>
-              <form className="admin-dialog admin-form" onClick={(event) => event.stopPropagation()} onSubmit={saveSite}>
-                <h2>{form.id ? '修改网址' : '添加网址'}</h2>
-                {message ? <p className={ok ? 'admin-message ok' : 'admin-message'}>{message}</p> : null}
-                <div className="admin-grid">
-                  <label>名称<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></label>
-                  <label>网址<input value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} onBlur={() => collectIcon(false)} required /></label>
-                </div>
-                <label>图标地址
-                  <span className="admin-icon-line">
-                    <input value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })} placeholder="可手动填写，或从网站采集" />
-                    <button className="admin-btn" type="button" disabled={collecting || busy} onClick={() => collectIcon(true)}>采集图标</button>
-                  </span>
-                </label>
-                <p className="admin-note">采集会读取网页图标；Chrome 应用店条目会优先用扩展图标。</p>
-                {form.icon ? <img className="admin-icon-preview" src={form.icon} alt="" /> : null}
-                <label>关键词<input value={form.keyword} onChange={(event) => setForm({ ...form, keyword: event.target.value })} /></label>
-                <label>说明<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={2} /></label>
-                <div className="admin-category-block">
-                  <p className="admin-note" style={{ marginBottom: 8 }}>所属分类（可多选，对应首页分类栏）</p>
-                  <div className="admin-checks">
-                    {navCategories.map((item) => (
-                      <label key={item.category}>
-                        <input
-                          type="checkbox"
-                          checked={form.categories.includes(item.category)}
-                          onChange={() => toggleCategory(item.category)}
-                        />
-                        {item.category_note}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className="admin-grid">
-                  {fields.sort_order !== false ? (
-                    <label>排序<input type="number" min="0" max="9999" value={form.sort_order} onChange={(event) => setForm({ ...form, sort_order: event.target.value })} /></label>
-                  ) : null}
-                  {fields.popularity !== false ? (
-                    <label>热度<input type="number" min="0" value={form.popularity} onChange={(event) => setForm({ ...form, popularity: event.target.value })} /></label>
-                  ) : null}
-                </div>
-                {fields.is_enabled !== false ? (
-                  <label className="admin-inline">
-                    <input type="checkbox" checked={form.is_enabled} onChange={(event) => setForm({ ...form, is_enabled: event.target.checked })} />
-                    启用
-                  </label>
-                ) : null}
-                <div className="admin-actions">
-                  <button className="admin-btn primary" disabled={busy || collecting} type="submit">{form.id ? '保存修改' : '添加网址'}</button>
-                  <button className="admin-btn" type="button" onClick={closeEditor}>取消</button>
-                </div>
-              </form>
-            </div>
-          ) : null}
-          <form className="admin-search" onSubmit={(event) => {
-            event.preventDefault();
-            setSiteOffset(0);
-            setSiteQuery(draftQuery.trim());
-          }}>
-            <select
-              value={siteCategory}
-              onChange={(event) => {
-                setSiteOffset(0);
-                setSiteCategory(event.target.value);
-              }}
-              aria-label="按分类筛选"
+      <div className="admin-body">
+        <aside className="admin-side" data-open={sideOpen ? '1' : '0'}>
+          <div className="admin-side-label">功能</div>
+          {MENUS.map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={tab === id ? 'admin-nav-btn active' : 'admin-nav-btn'}
+              onClick={() => openSection(id)}
             >
-              <option value="">全部分类</option>
-              {navCategories.map((item) => (
-                <option key={item.category} value={item.category}>{item.category_note}</option>
-              ))}
-            </select>
-            <input value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} placeholder="搜索名称、网址或关键词" />
-            <button className="admin-btn" type="submit">搜索</button>
-          </form>
-          {loading ? <p className="admin-note">正在读取…</p> : null}
-          <div className="admin-list">
-            {sites.map((site) => (
-              <article className="admin-site" key={site.id}>
-                {site.icon ? <img src={site.icon} alt="" /> : <span className="admin-icon-empty" />}
-                <div>
-                  <strong>{site.title}</strong>
-                  {site.is_enabled ? null : <em>未启用</em>}
-                  {site.user_id ? <em>用户 {site.user_id}</em> : null}
-                  <a className="admin-url" href={site.url} target="_blank" rel="noreferrer">{site.url}</a>
-                  <span>{site.categories.map((item) => (
-                    (navCategories.find((category) => category.category === item) || {}).category_note || item
-                  )).join('、')}</span>
-                </div>
-                <div className="admin-actions">
-                  <button className="admin-btn" type="button" onClick={() => openEditor(site)}>编辑</button>
-                  <button className="admin-btn danger" type="button" disabled={busy} onClick={() => removeSite(site)}>删除</button>
-                </div>
-              </article>
-            ))}
+              {label}
+            </button>
+          ))}
+        </aside>
+
+        <main className="admin-main">
+          <div className="admin-main-head">
+            <div>
+              <h1>{title}</h1>
+              <p>{lead}</p>
+            </div>
+            {tab === 'sites' ? (
+              <button className="admin-btn primary" type="button" onClick={() => openEditor(null)}>添加网址</button>
+            ) : null}
           </div>
-          {!loading && !sites.length ? <p className="admin-note">没有匹配的网址。</p> : null}
-          <Pager offset={siteOffset} total={siteTotal} pageSize={sitePage} onPage={setSiteOffset} />
-        </>
-      ) : (
-        <>
-          <p className="admin-note">列表用缩略图，首页背景用原图。JPG 保持原文件；方向不对的 JPG，以及 PNG、WEBP，会转成 JPG。已经在网站文件里的旧图可以改标题或移除，不能改分类。</p>
-          <form className="admin-form" onSubmit={uploadWallpaper}>
-            <div className="admin-grid">
-              <label>
-                分类
-                <select value={uploadCategory} onChange={(event) => setUploadCategory(event.target.value)}>
-                  {wallpaperCategories.map((item) => (
+
+          {!editorOpen && message ? <p className={ok ? 'admin-message ok' : 'admin-message'}>{message}</p> : null}
+
+          {tab === 'sites' ? (
+            <div className="admin-panel">
+              {editorOpen ? (
+                <div className="admin-modal" onClick={closeEditor}>
+                  <form className="admin-dialog admin-form" onClick={(event) => event.stopPropagation()} onSubmit={saveSite}>
+                    <h2>{form.id ? '修改网址' : '添加网址'}</h2>
+                    {message ? <p className={ok ? 'admin-message ok' : 'admin-message'}>{message}</p> : null}
+                    <div className="admin-grid">
+                      <label>名称<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></label>
+                      <label>网址<input value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} onBlur={() => collectIcon(false)} required /></label>
+                    </div>
+                    <label>图标地址
+                      <span className="admin-icon-line">
+                        <input value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })} placeholder="可手动填写，或从网站采集" />
+                        <button className="admin-btn" type="button" disabled={collecting || busy} onClick={() => collectIcon(true)}>采集图标</button>
+                      </span>
+                    </label>
+                    <p className="admin-note">采集会读取网页图标；Chrome 应用店条目会优先用扩展图标。</p>
+                    {form.icon ? <img className="admin-icon-preview" src={form.icon} alt="" /> : null}
+                    <label>关键词<input value={form.keyword} onChange={(event) => setForm({ ...form, keyword: event.target.value })} /></label>
+                    <label>说明<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={2} /></label>
+                    <div className="admin-category-block">
+                      <p className="admin-note" style={{ marginBottom: 8 }}>所属分类（可多选，对应首页分类栏）</p>
+                      <div className="admin-checks">
+                        {navCategories.map((item) => (
+                          <label key={item.category}>
+                            <input
+                              type="checkbox"
+                              checked={form.categories.includes(item.category)}
+                              onChange={() => toggleCategory(item.category)}
+                            />
+                            {item.category_note}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="admin-grid">
+                      {fields.sort_order !== false ? (
+                        <label>排序<input type="number" min="0" max="9999" value={form.sort_order} onChange={(event) => setForm({ ...form, sort_order: event.target.value })} /></label>
+                      ) : null}
+                      {fields.popularity !== false ? (
+                        <label>热度<input type="number" min="0" value={form.popularity} onChange={(event) => setForm({ ...form, popularity: event.target.value })} /></label>
+                      ) : null}
+                    </div>
+                    {fields.is_enabled !== false ? (
+                      <label className="admin-inline">
+                        <input type="checkbox" checked={form.is_enabled} onChange={(event) => setForm({ ...form, is_enabled: event.target.checked })} />
+                        启用
+                      </label>
+                    ) : null}
+                    <div className="admin-actions">
+                      <button className="admin-btn primary" disabled={busy || collecting} type="submit">{form.id ? '保存修改' : '添加网址'}</button>
+                      <button className="admin-btn" type="button" onClick={closeEditor}>取消</button>
+                    </div>
+                  </form>
+                </div>
+              ) : null}
+
+              <form className="admin-search" onSubmit={(event) => {
+                event.preventDefault();
+                setSiteOffset(0);
+                setSiteQuery(draftQuery.trim());
+              }}>
+                <select
+                  value={siteCategory}
+                  onChange={(event) => {
+                    setSiteOffset(0);
+                    setSiteCategory(event.target.value);
+                  }}
+                  aria-label="按分类筛选"
+                >
+                  <option value="">全部分类</option>
+                  {navCategories.map((item) => (
                     <option key={item.category} value={item.category}>{item.category_note}</option>
                   ))}
                 </select>
-              </label>
-              <label>标题<input value={uploadTitle} onChange={(event) => setUploadTitle(event.target.value)} /></label>
+                <input value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} placeholder="搜索名称、网址或关键词" />
+                <button className="admin-btn" type="submit">搜索</button>
+              </form>
+              {loading ? <p className="admin-note">正在读取…</p> : null}
+              <div className="admin-list">
+                {sites.map((site) => (
+                  <article className="admin-site" key={site.id}>
+                    {site.icon ? <img src={site.icon} alt="" /> : <span className="admin-icon-empty" />}
+                    <div>
+                      <strong>{site.title}</strong>
+                      {site.is_enabled ? null : <em>未启用</em>}
+                      {site.user_id ? <em>用户 {site.user_id}</em> : null}
+                      <a className="admin-url" href={site.url} target="_blank" rel="noreferrer">{site.url}</a>
+                      <span>{site.categories.map((item) => (
+                        (navCategories.find((category) => category.category === item) || {}).category_note || item
+                      )).join('、')}</span>
+                    </div>
+                    <div className="admin-actions">
+                      <button className="admin-btn" type="button" onClick={() => openEditor(site)}>编辑</button>
+                      <button className="admin-btn danger" type="button" disabled={busy} onClick={() => removeSite(site)}>删除</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              {!loading && !sites.length ? <p className="admin-note">没有匹配的网址。</p> : null}
+              <Pager offset={siteOffset} total={siteTotal} pageSize={sitePage} onPage={setSiteOffset} />
             </div>
-            <label>图片<input name="file" type="file" accept="image/jpeg,image/png,image/webp" /></label>
-            <button className="admin-btn primary" disabled={busy} type="submit">上传壁纸</button>
-          </form>
-          <label className="admin-search">
-            分类
-            <select value={wallpaperCategory} onChange={(event) => {
-              setWallpaperCategory(event.target.value);
-              setWallpaperOffset(0);
-            }}>
-              <option value="">全部</option>
-              {wallpaperCategories.map((item) => (
-                <option key={item.category} value={item.category}>{item.category_note}（{item.total}）</option>
-              ))}
-            </select>
-          </label>
-          {loading ? <p className="admin-note">正在读取…</p> : null}
-          <div className="admin-photos">
-            {wallpapers.map((item) => (
-              <article className="admin-photo" key={item.id}>
-                <img src={item.thumb || item.image} alt="" />
-                <input
-                  defaultValue={item.title}
-                  key={`${item.id}-${item.title}`}
-                  onBlur={(event) => {
-                    if (event.target.value !== item.title) saveWallpaper(item, { title: event.target.value });
-                  }}
-                />
-                <select
-                  value={item.category}
-                  disabled={item.local || busy}
-                  onChange={(event) => saveWallpaper(item, { category: event.target.value })}
-                >
-                  {wallpaperCategories.map((category) => (
-                    <option key={category.category} value={category.category}>{category.category_note}</option>
+          ) : null}
+
+          {tab === 'categories' ? (
+            <div className="admin-panel">
+              {loading ? <p className="admin-note">正在读取…</p> : null}
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>名称</th>
+                      <th>代号</th>
+                      <th>网址数</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categoryStats.map((item) => (
+                      <tr key={item.category}>
+                        <td>{item.category_note}</td>
+                        <td><code>{item.category}</code></td>
+                        <td>{item.total}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="admin-btn"
+                            onClick={() => openSitesByCategory(item.category)}
+                          >
+                            查看网址
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {!loading && !categoryStats.length ? <p className="admin-note">还没有分类数据。</p> : null}
+              <p className="admin-note" style={{ marginTop: 14 }}>
+                分类代号与首页导航栏一致。给网址勾选分类后，用户即可在首页分类里看到。如「出海插件」对应 <code>plugins</code>。
+              </p>
+            </div>
+          ) : null}
+
+          {tab === 'wallpapers' ? (
+            <div className="admin-panel">
+              <form className="admin-form" onSubmit={uploadWallpaper}>
+                <div className="admin-grid">
+                  <label>
+                    分类
+                    <select value={uploadCategory} onChange={(event) => setUploadCategory(event.target.value)}>
+                      {wallpaperCategories.map((item) => (
+                        <option key={item.category} value={item.category}>{item.category_note}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>标题<input value={uploadTitle} onChange={(event) => setUploadTitle(event.target.value)} /></label>
+                </div>
+                <label>图片<input name="file" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+                <button className="admin-btn primary" disabled={busy} type="submit">上传壁纸</button>
+              </form>
+              <label className="admin-search">
+                分类
+                <select value={wallpaperCategory} onChange={(event) => {
+                  setWallpaperCategory(event.target.value);
+                  setWallpaperOffset(0);
+                }}>
+                  <option value="">全部</option>
+                  {wallpaperCategories.map((item) => (
+                    <option key={item.category} value={item.category}>{item.category_note}（{item.total}）</option>
                   ))}
-                  {wallpaperCategories.some((category) => category.category === item.category) ? null : (
-                    <option value={item.category}>{item.category_note || item.category}</option>
-                  )}
                 </select>
-                <button className="admin-btn danger" type="button" disabled={busy} onClick={() => removeWallpaper(item)}>移除</button>
-              </article>
-            ))}
-          </div>
-          {!loading && !wallpapers.length ? <p className="admin-note">这个分类还没有壁纸。</p> : null}
-          <Pager offset={wallpaperOffset} total={wallpaperTotal} pageSize={wallpaperPage} onPage={setWallpaperOffset} />
-        </>
-      )}
+              </label>
+              {loading ? <p className="admin-note">正在读取…</p> : null}
+              <div className="admin-photos">
+                {wallpapers.map((item) => (
+                  <article className="admin-photo" key={item.id}>
+                    <img src={item.thumb || item.image} alt="" />
+                    <input
+                      defaultValue={item.title}
+                      key={`${item.id}-${item.title}`}
+                      onBlur={(event) => {
+                        if (event.target.value !== item.title) saveWallpaper(item, { title: event.target.value });
+                      }}
+                    />
+                    <select
+                      value={item.category}
+                      disabled={item.local || busy}
+                      onChange={(event) => saveWallpaper(item, { category: event.target.value })}
+                    >
+                      {wallpaperCategories.map((category) => (
+                        <option key={category.category} value={category.category}>{category.category_note}</option>
+                      ))}
+                      {wallpaperCategories.some((category) => category.category === item.category) ? null : (
+                        <option value={item.category}>{item.category_note || item.category}</option>
+                      )}
+                    </select>
+                    <button className="admin-btn danger" type="button" disabled={busy} onClick={() => removeWallpaper(item)}>移除</button>
+                  </article>
+                ))}
+              </div>
+              {!loading && !wallpapers.length ? <p className="admin-note">这个分类还没有壁纸。</p> : null}
+              <Pager offset={wallpaperOffset} total={wallpaperTotal} pageSize={wallpaperPage} onPage={setWallpaperOffset} />
+            </div>
+          ) : null}
+        </main>
+      </div>
     </div>
   );
 }

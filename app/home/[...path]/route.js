@@ -538,8 +538,11 @@ async function handle(request, context) {
   const params = context?.params ? await context.params : {};
   const segments = params.path || params.slug || [];
   const key = '/home/' + (Array.isArray(segments) ? segments.join('/') : String(segments));
-  if (key === '/home/admin/sites' || key === '/home/admin/wallpapers') {
-    return handleAdmin(request, key.endsWith('/wallpapers') ? 'wallpapers' : 'sites');
+  if (key === '/home/admin/sites' || key === '/home/admin/wallpapers' || key === '/home/admin/categories') {
+    const section = key.endsWith('/wallpapers')
+      ? 'wallpapers'
+      : (key.endsWith('/categories') ? 'categories' : 'sites');
+    return handleAdmin(request, section);
   }
   const user = await currentUser(request);
   if (key.startsWith('/home/share/')) {
