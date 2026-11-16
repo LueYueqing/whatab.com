@@ -532,25 +532,13 @@ function site(){
 
     //点击网站编辑按钮--------------------------  
     $('.console-siteset-btn').click(function(){
-        if($("#site-btn-box")[0].style.display=='flex'){//已经处于编辑模式下，不重复开启
-            return false;
-        }
-        if($("#site-box")[0].style.display!=='flex'){//所有图标被隐藏
-            showmsg('请先在页面布局设置中显示链接图标');
-            return false;
-        }
         if(userData['user_type']==0){//用户未登录,弹出登录界面
+            try{ sessionStorage.setItem('wa_login_next','/edit-home'); }catch(e){}
             $('#loginBlackBg').css('display','block');
             return false;
         }
-        else{//用户已经登录
-            initSiteEdit();
-
-            toAddSite();//添加网站
-            toDeleteSite()//删除网站
-            toEditSite();//编辑修改
-            
-        }
+        window.location.href='/edit-home';
+        return false;
     });
 
     //初始化网址编辑状态--------------------------

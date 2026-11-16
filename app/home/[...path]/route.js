@@ -20,11 +20,14 @@ import {
 import { createAlipayPayment, createWechatPayment, paymentReady, syncVipOrder } from '../../../lib/pay';
 import { fetchSiteMeta } from '../../../lib/site-meta';
 import {
+  cleanSiteUrl,
   createUserSite,
   createUserSiteCategory,
   deleteUserSite,
+  deleteUserSiteById,
   deleteUserSiteCategory,
   editUserSite,
+  ensureUserHomeSites,
   listUserSiteCategories,
   listUserSites,
   resetUserSites,
@@ -376,6 +379,53 @@ async function listNavCategorySites(category, offset, limit = 30) {
     url: row.url,
     icon: row.logo || row.icon_url || '',
   }));
+}
+
+async function searchEnabledNavSites(q, offset = 0) {
+  await ensureNavSiteExtras().catch(() => {});
+  const query = String(q || '').trim().slice(0, 64);
+  const start = Math.max(0, Number.parseInt(offset, 10) || 0);
+  const size = 20;
+  if (!query) return { sites: [], total: 0, offset: start, page_size: size };
+  const pattern = `%${query.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
+  const pool = getPool();
+  const where = `
+    WHERE (user_id = 0 OR user_id IS NULL)
+      AND ${navSiteEnabledSql()}
+      AND (title LIKE ? OR url LIKE ? OR IFNULL(keyword, '') LIKE ?)
+  `;
+  const params = [pattern, pattern, pattern];
+  const [counts] = await pool.query(
+    `SELECT COUNT(*) AS total FROM nav_sites ${where}`,
+    params,
+  );
+  const [rows] = await pool.query(
+    `SELECT id, title, url, logo, icon_url
+     FROM nav_sites
+     ${where}
+     ORDER BY popularity DESC, id ASC
+     LIMIT ? OFFSET ?`,
+    [...params, size, start],
+  );
+  return {
+    sites: rows.map((row) => ({
+      id: Number(row.id),
+      title: row.title || '',
+      url: row.url || '',
+      icon: row.logo || row.icon_url || '',
+    })),
+    total: Number(counts[0]?.total || 0),
+    offset: start,
+    page_size: size,
+  };
+}
+
+async function defaultHomeFallback(user) {
+  try {
+    return await listDefaultHomeSites(user);
+  } catch {
+    return [];
+  }
 }
 
 async function listNavCategories() {
@@ -748,6 +798,50 @@ async function handle(request, context) {
     if (!user) return NextResponse.json({ error: '请先微信登录' });
     const fields = await readFields(request);
     return NextResponse.json(await fetchSiteMeta(fields.url));
+  }
+  if (key === '/home/site/home') {
+    if (!user) return NextResponse.json({ error: '请先微信登录' }, { status: 401 });
+    const fields = await readFields(request);
+    const action = String(fields.action || 'list').trim();
+    const fallback = await defaultHomeFallback(user);
+    try {
+      if (action === 'list') {
+        return NextResponse.json({ sites: await ensureUserHomeSites(user.id, fallback) });
+      }
+      if (action === 'add') {
+        const nextUrl = cleanSiteUrl(fields.url);
+        const current = await listUserSites(user.id, { uncategorizedOnly: true });
+        if (nextUrl && current.some((item) => cleanSiteUrl(item.url) === nextUrl)) {
+          return NextResponse.json({ error: '这个网址已经在默认主页里了' });
+        }
+        const saved = await createUserSite(user.id, {
+          title: fields.title,
+          url: fields.url,
+          icon: fields.icon,
+          category_id: '',
+        }, null, fallback);
+        return NextResponse.json({
+          ...saved,
+          sites: await listUserSites(user.id, { uncategorizedOnly: true }),
+        });
+      }
+      if (action === 'remove') {
+        const removed = await deleteUserSiteById(user.id, fields.id, fallback);
+        return NextResponse.json({
+          ...removed,
+          success: '已从默认主页移除',
+          sites: await listUserSites(user.id, { uncategorizedOnly: true }),
+        });
+      }
+    } catch (error) {
+      return NextResponse.json({ error: error.expose ? error.message : '保存失败，请稍后再试' });
+    }
+    return NextResponse.json({ error: '不支持的操作' });
+  }
+  if (key === '/home/nav/search') {
+    if (!user) return NextResponse.json({ error: '请先微信登录' }, { status: 401 });
+    const fields = await readFields(request);
+    return NextResponse.json(await searchEnabledNavSites(fields.q, fields.offset));
   }
   if (key === '/home/site/create' || key === '/home/site/edit' || key === '/home/site/delete' || key === '/home/site/sort') {
     if (!user) return NextResponse.json({ error: '请先微信登录' });
