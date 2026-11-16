@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 const MENUS = [
@@ -41,8 +43,9 @@ function sectionTitle(tab) {
   return ['网址管理', '首页默认图标使用已启用的前 18 个。分类栏按热度展示对应分类网址。'];
 }
 
-export default function AdminPanel({ name }) {
-  const [tab, setTab] = useState('sites');
+export default function AdminPanel({ name, section = 'sites', initialCategory = '' }) {
+  const router = useRouter();
+  const tab = MENUS.some(([id]) => id === section) ? section : 'sites';
   const [form, setForm] = useState(blankSite);
   const [editorOpen, setEditorOpen] = useState(false);
   const [collecting, setCollecting] = useState(false);
@@ -52,7 +55,7 @@ export default function AdminPanel({ name }) {
   const [sitePage, setSitePage] = useState(20);
   const [siteQuery, setSiteQuery] = useState('');
   const [draftQuery, setDraftQuery] = useState('');
-  const [siteCategory, setSiteCategory] = useState('');
+  const [siteCategory, setSiteCategory] = useState(initialCategory || '');
   const [navCategories, setNavCategories] = useState([]);
   const [categoryStats, setCategoryStats] = useState([]);
   const [fields, setFields] = useState({ sort_order: true, popularity: true, is_enabled: true });
@@ -73,6 +76,7 @@ export default function AdminPanel({ name }) {
   const [sideOpen, setSideOpen] = useState(false);
 
   const [title, lead] = useMemo(() => sectionTitle(tab), [tab]);
+  const loginNext = `/admin/${tab}`;
 
   function say(text, good = false) {
     setMessage(text || '');
@@ -90,22 +94,21 @@ export default function AdminPanel({ name }) {
     return data;
   }
 
-  function openSection(next) {
-    setTab(next);
-    setMessage('');
-    setEditorOpen(false);
-    setSideOpen(false);
-    if (next === 'sites') setSiteOffset(0);
-    if (next === 'wallpapers') setWallpaperOffset(0);
+  function openSitesByCategory(category) {
+    const code = String(category || '').trim();
+    const path = code ? `/admin/sites?category=${encodeURIComponent(code)}` : '/admin/sites';
+    router.push(path);
   }
 
-  function openSitesByCategory(category) {
-    setSiteCategory(category || '');
+  useEffect(() => {
+    setSiteCategory(initialCategory || '');
     setSiteOffset(0);
     setSiteQuery('');
     setDraftQuery('');
-    openSection('sites');
-  }
+    setEditorOpen(false);
+    setMessage('');
+    setSideOpen(false);
+  }, [tab, initialCategory]);
 
   useEffect(() => {
     let ignore = false;
@@ -318,7 +321,7 @@ export default function AdminPanel({ name }) {
     return (
       <div className="admin-gate">
         <p>请先登录。</p>
-        <p><a className="admin-btn primary" href="/wechat/login?next=/admin">微信登录</a></p>
+        <p><a className="admin-btn primary" href={`/wechat/login?next=${encodeURIComponent(loginNext)}`}>微信登录</a></p>
       </div>
     );
   }
@@ -326,10 +329,10 @@ export default function AdminPanel({ name }) {
   return (
     <div className="admin-app">
       <header className="admin-top">
-        <a className="admin-top-brand" href="/admin">
+        <Link className="admin-top-brand" href="/admin/sites">
           <img src="/static/home/images/logo_text.svg" alt="" />
           <span>管理后台</span>
-        </a>
+        </Link>
         <div className="admin-top-meta">管理员 {name}</div>
         <div className="admin-top-links">
           <button
@@ -348,14 +351,14 @@ export default function AdminPanel({ name }) {
         <aside className="admin-side" data-open={sideOpen ? '1' : '0'}>
           <div className="admin-side-label">功能</div>
           {MENUS.map(([id, label]) => (
-            <button
+            <Link
               key={id}
-              type="button"
+              href={`/admin/${id}`}
               className={tab === id ? 'admin-nav-btn active' : 'admin-nav-btn'}
-              onClick={() => openSection(id)}
+              onClick={() => setSideOpen(false)}
             >
               {label}
-            </button>
+            </Link>
           ))}
         </aside>
 
@@ -438,8 +441,11 @@ export default function AdminPanel({ name }) {
                 <select
                   value={siteCategory}
                   onChange={(event) => {
-                    setSiteOffset(0);
-                    setSiteCategory(event.target.value);
+                    const next = event.target.value;
+                    const path = next
+                      ? `/admin/sites?category=${encodeURIComponent(next)}`
+                      : '/admin/sites';
+                    router.push(path);
                   }}
                   aria-label="按分类筛选"
                 >

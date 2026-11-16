@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
+import { isAdminNextPath } from '../../../lib/admin-access';
 import { createSession, sessionCookieOptions, upsertWechatUser } from '../../../lib/users';
 import { exchangeCode, fetchWechatUser } from '../../../lib/wechat';
 
@@ -12,8 +13,11 @@ function home(request, reason) {
     ? `${proto}://${forwarded.split(',')[0].trim()}`
     : new URL(request.url).origin;
   const requested = request.cookies?.get('wa_next')?.value;
-  const nextPath = !reason && (requested === '/set-homepage/upload' || requested === '/admin' || requested === '/share')
-    ? requested
+  const allowedNext = requested === '/set-homepage/upload'
+    || requested === '/share'
+    || isAdminNextPath(requested);
+  const nextPath = !reason && allowedNext
+    ? (requested === '/admin' ? '/admin/sites' : requested)
     : '/';
   const url = new URL(nextPath, origin);
   if (reason) url.searchParams.set('wechat', reason);

@@ -389,7 +389,7 @@ function site(){
                             var adminLink=document.createElement('a');
                             adminLink.id='admin-entry';
                             adminLink.className='console-menu-btn';
-                            adminLink.href='/admin';
+                            adminLink.href='/admin/sites';
                             adminLink.textContent='管理网址和壁纸';
                             adminLink.style.textDecoration='none';
                             adminLink.style.color='inherit';

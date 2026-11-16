@@ -26,6 +26,10 @@ const nextConfig = {
         headers: [{ key: 'Cache-Control', value: 'private, no-store' }],
       },
       {
+        source: '/admin/:path*',
+        headers: [{ key: 'Cache-Control', value: 'private, no-store' }],
+      },
+      {
         source: '/share',
         headers: [{ key: 'Cache-Control', value: 'private, no-store' }],
       },

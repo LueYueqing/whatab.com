@@ -83,8 +83,11 @@
 
 .admin-nav-btn {
   appearance: none;
+  display: block;
   width: 100%;
+  box-sizing: border-box;
   text-align: left;
+  text-decoration: none;
   border: 0;
   border-radius: 8px;
   padding: 10px 12px;

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isAdminNextPath } from '../../../lib/admin-access';
 import { authorizeUrl, createOAuthState, wechatReady } from '../../../lib/wechat';
 
 export const dynamic = 'force-dynamic';
@@ -24,8 +25,8 @@ export function GET(request) {
   const response = NextResponse.redirect(authorizeUrl(state));
   response.cookies.set('wechat_state', state, cookieOptions());
   const next = new URL(request.url).searchParams.get('next');
-  if (next === '/set-homepage/upload' || next === '/admin' || next === '/share') {
-    response.cookies.set('wa_next', next, cookieOptions());
+  if (next === '/set-homepage/upload' || next === '/share' || isAdminNextPath(next)) {
+    response.cookies.set('wa_next', next === '/admin' ? '/admin/sites' : next, cookieOptions());
   }
   return response;
 }
