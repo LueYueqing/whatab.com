@@ -24,6 +24,7 @@ function blankSite() {
     is_enabled: true,
     is_deleted: false,
     open_seconds: null,
+    monthly_visits: null,
   };
 }
 
@@ -42,7 +43,7 @@ function Pager({ offset, total, pageSize, onPage }) {
 function sectionTitle(tab) {
   if (tab === 'categories') return ['网址分类', '「默认」(default) 是首页图标清单；其它分类可改名、改代号或删除（删除只去标签，不删网址）。'];
   if (tab === 'wallpapers') return ['壁纸管理', '列表用缩略图，首页背景用原图。已在网站文件里的旧图可改标题或移除，不能改分类。'];
-  return ['网址管理', '列表显示启用/删除状态与打开耗时（秒）。删除为软删除，前台不可见；可在「已删除」中恢复。'];
+  return ['网址管理', '列表显示启用/删除状态、打开耗时与月访问量。删除为软删除，前台不可见；可在「已删除」中恢复。'];
 }
 
 export default function AdminPanel({ name, section = 'sites', initialCategory = '' }) {
@@ -71,6 +72,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
     is_enabled: true,
     is_deleted: true,
     open_seconds: true,
+    monthly_visits: true,
   });
   const [wallpapers, setWallpapers] = useState([]);
   const [wallpaperTotal, setWallpaperTotal] = useState(0);
@@ -344,6 +346,13 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
     if (!Number.isFinite(seconds)) return '未检测';
     if (seconds < 0) return '失败';
     return `${seconds.toFixed(seconds >= 10 ? 1 : 3)} 秒`;
+  }
+
+  function formatMonthlyVisits(value) {
+    if (value == null || value === '') return '暂无';
+    const visits = Number(value);
+    if (!Number.isFinite(visits) || visits < 0) return '暂无';
+    return visits.toLocaleString('zh-CN');
   }
 
   async function toggleSiteEnabled(site) {
@@ -634,6 +643,21 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                       {fields.popularity !== false ? (
                         <label>热度<input type="number" min="0" value={form.popularity} onChange={(event) => setForm({ ...form, popularity: event.target.value })} /></label>
                       ) : null}
+                      {fields.monthly_visits !== false ? (
+                        <label>
+                          月访问量
+                          <input
+                            type="number"
+                            min="0"
+                            value={form.monthly_visits == null ? '' : form.monthly_visits}
+                            onChange={(event) => setForm({
+                              ...form,
+                              monthly_visits: event.target.value === '' ? null : event.target.value,
+                            })}
+                            placeholder="后续接入，可先空着"
+                          />
+                        </label>
+                      ) : null}
                     </div>
                     {fields.is_enabled !== false ? (
                       <label className="admin-inline">
@@ -713,6 +737,11 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                         {fields.open_seconds !== false ? (
                           <em className="admin-open-seconds" title="打开耗时（秒），仅后台可见">
                             打开 {formatOpenSeconds(site.open_seconds)}
+                          </em>
+                        ) : null}
+                        {fields.monthly_visits !== false ? (
+                          <em className="admin-monthly-visits" title="近一月访问量，后续接入数据源">
+                            月访 {formatMonthlyVisits(site.monthly_visits)}
                           </em>
                         ) : null}
                         {site.user_id ? <em>用户 {site.user_id}</em> : null}
