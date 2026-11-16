@@ -673,8 +673,8 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
           {tab === 'sites' ? (
             <div className="admin-panel">
               {editorOpen ? (
-                <div className="admin-modal" onClick={closeEditor}>
-                  <form className="admin-dialog admin-form" onClick={(event) => event.stopPropagation()} onSubmit={saveSite}>
+                <div className="admin-modal">
+                  <form className="admin-dialog admin-form" onSubmit={saveSite}>
                     <h2>{form.id ? '修改网址' : '添加网址'}</h2>
                     {message ? <p className={ok ? 'admin-message ok' : 'admin-message'}>{message}</p> : null}
                     <div className="admin-grid">
