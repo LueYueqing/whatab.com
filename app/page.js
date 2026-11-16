@@ -9,7 +9,7 @@ export const metadata = pageMeta({
 });
 
 const HOME_STYLES = [
-  '/static/home/css/index/base.9f99ea.css',
+  '/static/home/css/index/base.1d2753.css',
   '/static/home/css/index/console.f95946.css',
 ];
 
