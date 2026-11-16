@@ -272,6 +272,13 @@ html:has(.admin-app) {
   background: #111;
   border-radius: 8px;
 }
+.admin-photo-category {
+  margin: 0;
+  padding: 2px 2px 0;
+  color: var(--admin-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
 
 .admin-pager {
   display: flex;

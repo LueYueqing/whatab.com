@@ -573,18 +573,27 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                         if (event.target.value !== item.title) saveWallpaper(item, { title: event.target.value });
                       }}
                     />
-                    <select
-                      value={item.category}
-                      disabled={item.local || busy}
-                      onChange={(event) => saveWallpaper(item, { category: event.target.value })}
-                    >
-                      {wallpaperCategories.map((category) => (
-                        <option key={category.category} value={category.category}>{category.category_note}</option>
-                      ))}
-                      {wallpaperCategories.some((category) => category.category === item.category) ? null : (
-                        <option value={item.category}>{item.category_note || item.category}</option>
-                      )}
-                    </select>
+                    {item.local ? (
+                      <p className="admin-photo-category">
+                        {(wallpaperCategories.find((category) => category.category === item.category) || {}).category_note
+                          || item.category_note
+                          || item.category
+                          || '未分类'}
+                      </p>
+                    ) : (
+                      <select
+                        value={item.category}
+                        disabled={busy}
+                        onChange={(event) => saveWallpaper(item, { category: event.target.value })}
+                      >
+                        {wallpaperCategories.map((category) => (
+                          <option key={category.category} value={category.category}>{category.category_note}</option>
+                        ))}
+                        {wallpaperCategories.some((category) => category.category === item.category) ? null : (
+                          <option value={item.category}>{item.category_note || item.category}</option>
+                        )}
+                      </select>
+                    )}
                     <button className="admin-btn danger" type="button" disabled={busy} onClick={() => removeWallpaper(item)}>移除</button>
                   </article>
                 ))}
