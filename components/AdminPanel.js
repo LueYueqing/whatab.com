@@ -33,11 +33,14 @@ function blankSite() {
 function Pager({ offset, total, pageSize, onPage }) {
   const page = Math.floor(offset / pageSize) + 1;
   const pages = Math.max(1, Math.ceil(total / pageSize));
+  const lastOffset = Math.max(0, (pages - 1) * pageSize);
   return (
     <div className="admin-pager">
+      <button type="button" className="admin-btn" disabled={offset <= 0} onClick={() => onPage(0)}>第一页</button>
       <button type="button" className="admin-btn" disabled={offset <= 0} onClick={() => onPage(Math.max(0, offset - pageSize))}>上一页</button>
       <span>{page} / {pages}，共 {total} 条</span>
       <button type="button" className="admin-btn" disabled={offset + pageSize >= total} onClick={() => onPage(offset + pageSize)}>下一页</button>
+      <button type="button" className="admin-btn" disabled={offset >= lastOffset} onClick={() => onPage(lastOffset)}>最后一页</button>
     </div>
   );
 }
