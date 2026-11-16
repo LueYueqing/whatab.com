@@ -5,6 +5,7 @@ const LINKS = [
   ['/guide', '使用指南'],
   ['/set-homepage/upload', '上传壁纸'],
   ['/share', '分享主页'],
+  ['/mcp', 'MCP'],
 ];
 
 export default function SiteHeader({ current }) {
