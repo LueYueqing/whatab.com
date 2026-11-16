@@ -14,13 +14,16 @@
   --admin-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-html:has(.admin-app) {
-  scrollbar-gutter: stable;
+html:has(.admin-app),
+html:has(.admin-app) body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
 }
 
 .admin-app {
-  height: 100vh;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -113,7 +116,7 @@ html:has(.admin-app) {
   min-height: 0;
   padding: 22px 24px 40px;
   overflow-x: hidden;
-  overflow-y: scroll;
+  overflow-y: auto;
   scrollbar-gutter: stable;
 }
 
@@ -325,7 +328,8 @@ html:has(.admin-app) {
 }
 
 .admin-table-wrap {
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: visible;
   background: var(--admin-surface);
   border: 1px solid var(--admin-line);
   border-radius: 10px;
