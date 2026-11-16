@@ -19,8 +19,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TIMEOUT = int(os.environ.get("WA_OPEN_TIMEOUT", "8"))
-WORKERS = int(os.environ.get("WA_OPEN_WORKERS", "40"))
-BATCH = int(os.environ.get("WA_OPEN_BATCH", "200"))
+WORKERS = int(os.environ.get("WA_OPEN_WORKERS", "12"))
+BATCH = int(os.environ.get("WA_OPEN_BATCH", "80"))
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
