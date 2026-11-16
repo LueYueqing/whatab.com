@@ -38,9 +38,9 @@ function Pager({ offset, total, pageSize, onPage }) {
 }
 
 function sectionTitle(tab) {
-  if (tab === 'categories') return ['网址分类', '可改名称与代号，也可删除。删除不会删网址，只会去掉该分类标签。'];
+  if (tab === 'categories') return ['网址分类', '「默认」(default) 是首页图标清单；其它分类可改名、改代号或删除（删除只去标签，不删网址）。'];
   if (tab === 'wallpapers') return ['壁纸管理', '列表用缩略图，首页背景用原图。已在网站文件里的旧图可改标题或移除，不能改分类。'];
-  return ['网址管理', '首页默认图标使用已启用的前 18 个。外链图标保存时会转存到自有 OSS，也可点「转存图标到 OSS」批量处理。'];
+  return ['网址管理', '勾选「默认」分类的网址会出现在首页图标区（最多 18 个，按排序）。外链图标会转存到自有 OSS。'];
 }
 
 export default function AdminPanel({ name, section = 'sites', initialCategory = '' }) {
@@ -388,6 +388,10 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
   }
 
   async function removeCategory(item) {
+    if (item.category === 'default') {
+      say('「默认」分类不能删除，请在网址管理里调整其清单');
+      return;
+    }
     const count = Number(item.total || 0);
     const okDelete = window.confirm(
       count
@@ -713,14 +717,16 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                             >
                               查看网址
                             </button>
-                            <button
-                              type="button"
-                              className="admin-btn danger"
-                              disabled={busy}
-                              onClick={() => removeCategory(item)}
-                            >
-                              删除
-                            </button>
+                            {item.category === 'default' ? null : (
+                              <button
+                                type="button"
+                                className="admin-btn danger"
+                                disabled={busy}
+                                onClick={() => removeCategory(item)}
+                              >
+                                删除
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );

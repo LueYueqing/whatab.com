@@ -1146,7 +1146,11 @@ $('#console-title-box').click(function(){
     function renderNavCategoryList(){
         var list=document.getElementById('nav-category-list');
         list.innerHTML='';
-        var items=[{category:'', category_note:'默认'}].concat(navCategoryList);
+        var hasDefault=false;
+        for(var d=0;d<navCategoryList.length;d++){
+            if(navCategoryList[d].category==='default'){ hasDefault=true; break; }
+        }
+        var items=(hasDefault?[]:[{category:'default', category_note:'默认', total:0}]).concat(navCategoryList);
         for(var i=0;i<items.length;i++){
             var item=items[i];
             var row=document.createElement('div');
@@ -1256,11 +1260,12 @@ $('#console-title-box').click(function(){
         if(category && !/^[a-z0-9-]{1,40}$/.test(category)){
             return;
         }
-        if(category===navViewCategory && document.getElementById('nav-site-list').children.length){
+        var nextCategory=category||'default';
+        if(nextCategory===navViewCategory && document.getElementById('nav-site-list').children.length){
             return;
         }
-        navViewCategory=category||'';
-        navCategoriesSelected=navViewCategory ? [navViewCategory] : [];
+        navViewCategory=nextCategory;
+        navCategoriesSelected=[navViewCategory];
         writeNavCategories(navCategoriesSelected);
         if(navViewCategory!=='catshare'){
             saveUserPref({nav_categories: JSON.stringify(navCategoriesSelected)});

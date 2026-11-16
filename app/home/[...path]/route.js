@@ -56,7 +56,11 @@ import {
   parsePersonalNavCode,
   personalNavCode,
 } from '../../../lib/category-shares';
-import { listNavCategoryRegistry } from '../../../lib/nav-categories';
+import {
+  DEFAULT_HOME_CATEGORY,
+  listNavCategoryRegistry,
+  seedDefaultHomeSitesIfEmpty,
+} from '../../../lib/nav-categories';
 import { createVipOrder, FREE_UPLOAD_LIMIT, VIP_PRICE_YUAN } from '../../../lib/vip';
 
 export const dynamic = 'force-dynamic';
@@ -110,6 +114,10 @@ function navCategoryNote(category, note, notes = {}) {
 async function listNavSites(userId = 0, categories = []) {
   const pool = getPool();
   const selected = readCategoryList(categories);
+  const isDefaultHome = selected.length === 1 && selected[0] === DEFAULT_HOME_CATEGORY;
+  const orderBy = selected.length && !isDefaultHome
+    ? 'popularity DESC, sort_order ASC, id ASC'
+    : 'sort_order ASC, id ASC';
   const sql = selected.length
     ? `SELECT title, keyword, url, description, logo, icon_url, img_name,
               category, category_note, source, country, popularity, is_pinned,
@@ -120,7 +128,7 @@ async function listNavSites(userId = 0, categories = []) {
        WHERE (user_id = ? OR user_id IS NULL)
          AND is_enabled = 1
          AND JSON_OVERLAPS(category, CAST(? AS JSON))
-       ORDER BY popularity DESC, sort_order ASC, id ASC
+       ORDER BY ${orderBy}
        LIMIT 18`
     : `SELECT title, keyword, url, description, logo, icon_url, img_name,
               category, category_note, source, country, popularity, is_pinned,
@@ -209,17 +217,28 @@ async function homepageSiteData(user, categories, request = null) {
         return [];
       }
     }
+    if (selected[0] === DEFAULT_HOME_CATEGORY) {
+      return listDefaultHomeSites(user);
+    }
     return listNavSites(0, selected);
   }
+  return listDefaultHomeSites(user);
+}
+
+async function listDefaultHomeSites(user) {
   if (user) {
     try {
-      // 未选分类时：未分类个人网址进首页图标区；有分类的留给分类栏
+      // 未选其它分类时：未分类个人网址进首页图标区；有分类的留给分类栏
       const personal = await listUserSites(user.id, { uncategorizedOnly: true });
       if (personal.length) return personal;
     } catch {
-      /* 个人网址读失败时仍显示公共网址 */
+      /* 个人网址读失败时仍显示公共默认清单 */
     }
   }
+  await seedDefaultHomeSitesIfEmpty().catch(() => {});
+  const configured = await listNavSites(0, [DEFAULT_HOME_CATEGORY]);
+  if (configured.length) return configured;
+  // 兼容：默认分类还没挂网址时，回退到按 sort_order 的前 18 条
   return listNavSites(0, []);
 }
 
@@ -233,6 +252,7 @@ async function homepageSiteCategories(user) {
 }
 
 async function listNavCategoriesForHome(request, user) {
+  await seedDefaultHomeSitesIfEmpty().catch(() => {});
   const rows = await listNavCategories();
   const out = [];
   const share = await categoryShareFromRequest(request).catch(() => null);
