@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 const MENUS = [
@@ -45,7 +45,10 @@ function sectionTitle(tab) {
 
 export default function AdminPanel({ name, section = 'sites', initialCategory = '' }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const tab = MENUS.some(([id]) => id === section) ? section : 'sites';
+  const categoryFromUrl = String(searchParams.get('category') || initialCategory || '').trim();
+  const safeCategoryFromUrl = /^[a-z0-9-]{1,40}$/.test(categoryFromUrl) ? categoryFromUrl : '';
   const [form, setForm] = useState(blankSite);
   const [editorOpen, setEditorOpen] = useState(false);
   const [collecting, setCollecting] = useState(false);
@@ -55,7 +58,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
   const [sitePage, setSitePage] = useState(20);
   const [siteQuery, setSiteQuery] = useState('');
   const [draftQuery, setDraftQuery] = useState('');
-  const [siteCategory, setSiteCategory] = useState(initialCategory || '');
+  const [siteCategory, setSiteCategory] = useState(safeCategoryFromUrl);
   const [navCategories, setNavCategories] = useState([]);
   const [categoryStats, setCategoryStats] = useState([]);
   const [fields, setFields] = useState({ sort_order: true, popularity: true, is_enabled: true });
@@ -101,14 +104,16 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
   }
 
   useEffect(() => {
-    setSiteCategory(initialCategory || '');
+    setSiteCategory(safeCategoryFromUrl);
     setSiteOffset(0);
-    setSiteQuery('');
-    setDraftQuery('');
+    if (tab !== 'sites') {
+      setSiteQuery('');
+      setDraftQuery('');
+    }
     setEditorOpen(false);
     setMessage('');
     setSideOpen(false);
-  }, [tab, initialCategory]);
+  }, [tab, safeCategoryFromUrl]);
 
   useEffect(() => {
     let ignore = false;
