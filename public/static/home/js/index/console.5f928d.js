@@ -1290,11 +1290,39 @@ $('#console-title-box').click(function(){
         };
     }
 
+    function syncNavCategorySelection(){
+        var code=readNavCategories()[0]||'default';
+        if(code==='catshare' || /^u-/.test(code)){
+            navCategoriesSelected=[code];
+            navViewCategory=code;
+            return false;
+        }
+        var found=false;
+        for(var i=0;i<navCategoryList.length;i++){
+            if(navCategoryList[i].category===code){
+                found=true;
+                break;
+            }
+        }
+        if(!found){
+            writeNavCategories(['default']);
+            saveUserPref({nav_categories: JSON.stringify(['default'])});
+            navCategoriesSelected=['default'];
+            navViewCategory='default';
+            if(window.reloadNavSites){
+                window.reloadNavSites();
+            }
+            return true;
+        }
+        navCategoriesSelected=[code];
+        navViewCategory=code;
+        return false;
+    }
+
     function openNavCategories(){
-        navCategoriesSelected=readNavCategories();
-        navViewCategory=navCategoriesSelected[0]||'';
         bindNavSiteScroll();
         if(navCategoryList.length){
+            syncNavCategorySelection();
             renderNavCategoryList();
             resetNavSites();
             return;
@@ -1304,8 +1332,7 @@ $('#console-title-box').click(function(){
         req.onreadystatechange=function(){
             if(req.readyState==4 && req.status==200){
                 navCategoryList=JSON.parse(req.response)||[];
-                navCategoriesSelected=readNavCategories();
-                navViewCategory=navCategoriesSelected[0]||'';
+                syncNavCategorySelection();
                 renderNavCategoryList();
                 resetNavSites();
             }

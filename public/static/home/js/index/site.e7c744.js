@@ -370,11 +370,15 @@ function site(){
                                 writeStoredCategory(userData['bg_category']);
                             }
                         }
-                        // 切分类刷新图标时不要用服务端旧偏好盖掉刚选的分类
+                        // 切分类刷新图标时不要用服务端旧偏好盖掉刚选的分类；
+                        // 本地为空时同步服务端；服务端已清空（分类被删）时也清掉本地旧代号
                         if(!iconsOnly && Array.isArray(userData['nav_categories']) && typeof writeNavCategories==='function'){
                             var localNav=(typeof readNavCategories==='function') ? readNavCategories() : [];
+                            var serverNav=userData['nav_categories']||[];
                             if(!localNav.length){
-                                writeNavCategories(userData['nav_categories']);
+                                writeNavCategories(serverNav.length ? serverNav : ['default']);
+                            }else if(!serverNav.length && localNav[0] && localNav[0]!=='default' && localNav[0]!=='catshare' && String(localNav[0]).indexOf('u-')!==0){
+                                writeNavCategories(['default']);
                             }
                         }
                     }

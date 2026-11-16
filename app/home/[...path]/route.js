@@ -201,12 +201,13 @@ async function homepageSiteData(user, categories, request = null) {
     }
     const personalCode = parsePersonalNavCode(code);
     if (personalCode) {
-      if (!user) return [];
+      if (!user) return listDefaultHomeSites(null);
       try {
         const cats = await listUserSiteCategories(user.id);
         const found = cats.find((item) => item.code === personalCode);
-        if (!found) return [];
+        if (!found) return listDefaultHomeSites(user);
         const rows = await listUserSites(user.id, { categoryId: found.id });
+        if (!rows.length) return listDefaultHomeSites(user);
         return rows.slice(0, 18).map((item, index) => ({
           sort: index,
           title: item.title,
@@ -214,13 +215,16 @@ async function homepageSiteData(user, categories, request = null) {
           icon: item.icon,
         }));
       } catch {
-        return [];
+        return listDefaultHomeSites(user);
       }
     }
     if (selected[0] === DEFAULT_HOME_CATEGORY) {
       return listDefaultHomeSites(user);
     }
-    return listNavSites(0, selected);
+    const rows = await listNavSites(0, selected);
+    // 分类已被删或不存在启用网址时，回落到默认清单，避免首页空白
+    if (!rows.length) return listDefaultHomeSites(user);
+    return rows;
   }
   return listDefaultHomeSites(user);
 }
