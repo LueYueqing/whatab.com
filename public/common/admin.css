@@ -368,14 +368,25 @@ html:has(.admin-app) body {
   color: var(--admin-ink);
 }
 .admin-icon-line { display: flex; gap: 8px; align-items: center; }
-.admin-icon-line input { flex: 1; }
-.admin-icon-line .admin-btn { flex: none; margin-top: 4px; }
+.admin-icon-line input { flex: 1; min-width: 0; }
+.admin-icon-line .admin-btn { flex: none; white-space: nowrap; }
 .admin-icon-preview {
   width: 40px;
   height: 40px;
+  flex: none;
   object-fit: contain;
   background: #eef1f4;
+  border: 1px solid var(--admin-line);
   border-radius: 8px;
+}
+.admin-icon-line .admin-icon-empty {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  border-radius: 8px;
+  background: #eef1f4;
+  border: 1px dashed var(--admin-line);
 }
 
 .admin-table-wrap {

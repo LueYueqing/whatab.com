@@ -55,6 +55,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
   const [form, setForm] = useState(blankSite);
   const [editorOpen, setEditorOpen] = useState(false);
   const [collecting, setCollecting] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
   const [sites, setSites] = useState([]);
   const [siteTotal, setSiteTotal] = useState(0);
   const [siteOffset, setSiteOffset] = useState(0);
@@ -254,6 +255,49 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
       say(error.message);
     } finally {
       setCollecting(false);
+    }
+  }
+
+  async function uploadIconFile(file) {
+    if (!file) return;
+    if (!String(file.type || '').startsWith('image/')) {
+      say('请粘贴图片');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      say('图标不能超过 2MB');
+      return;
+    }
+    const body = new FormData();
+    body.set('action', 'upload_icon');
+    body.set('file', file, file.name || 'icon.png');
+    setUploadingIcon(true);
+    say('');
+    try {
+      const data = await request('/home/admin/sites', { method: 'POST', body });
+      if (data.error || !data.icon) {
+        say(data.error || '图标上传失败');
+        return;
+      }
+      setForm((current) => ({ ...current, icon: data.icon }));
+      say('图标已上传到 OSS', true);
+    } catch (error) {
+      say(error.message);
+    } finally {
+      setUploadingIcon(false);
+    }
+  }
+
+  function onIconPaste(event) {
+    const items = event.clipboardData?.items;
+    if (!items?.length) return;
+    for (const item of items) {
+      if (!item.type?.startsWith('image/')) continue;
+      const file = item.getAsFile();
+      if (!file) continue;
+      event.preventDefault();
+      uploadIconFile(file);
+      return;
     }
   }
 
@@ -637,14 +681,30 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                       <label>名称<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></label>
                       <label>网址<input value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} onBlur={() => collectIcon(false)} required /></label>
                     </div>
-                    <label>图标地址
+                    <label>网站图标
                       <span className="admin-icon-line">
-                        <input value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })} placeholder="可手动填写，或从网站采集" />
-                        <button className="admin-btn" type="button" disabled={collecting || busy} onClick={() => collectIcon(true)}>采集图标</button>
+                        {form.icon ? (
+                          <img className="admin-icon-preview" src={form.icon} alt="" />
+                        ) : (
+                          <span className="admin-icon-preview admin-icon-empty" aria-hidden="true" />
+                        )}
+                        <input
+                          value={form.icon}
+                          onChange={(event) => setForm({ ...form, icon: event.target.value })}
+                          onPaste={onIconPaste}
+                          placeholder="粘贴图片自动上传，或填写地址"
+                          disabled={uploadingIcon || busy}
+                        />
+                        <button className="admin-btn" type="button" disabled={collecting || uploadingIcon || busy} onClick={() => collectIcon(true)}>
+                          {collecting ? '采集中…' : '采集图标'}
+                        </button>
                       </span>
                     </label>
-                    <p className="admin-note">采集会读取网页图标并转存到自有 OSS；Chrome 应用店条目会优先用扩展图标。</p>
-                    {form.icon ? <img className="admin-icon-preview" src={form.icon} alt="" /> : null}
+                    <p className="admin-note">
+                      {uploadingIcon
+                        ? '正在上传图标到 OSS…'
+                        : '可在输入框粘贴截图/图标，自动上传到 OSS 并回填地址；也可采集网站图标。'}
+                    </p>
                     <label>关键词<input value={form.keyword} onChange={(event) => setForm({ ...form, keyword: event.target.value })} /></label>
                     <label>说明<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={2} /></label>
                     <div className="admin-category-block">
