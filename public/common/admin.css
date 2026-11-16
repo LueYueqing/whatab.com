@@ -422,12 +422,18 @@ html:has(.admin-app) body {
   display: inline-block;
   vertical-align: middle;
 }
+.admin-sites-table .admin-col-url {
+  width: 50ch;
+  max-width: 50ch;
+}
 .admin-sites-table .admin-url {
-  display: inline;
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block;
+  max-width: 50ch;
+  color: var(--admin-muted);
+  line-height: 1.35;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .admin-sites-table .admin-num {
   font-variant-numeric: tabular-nums;

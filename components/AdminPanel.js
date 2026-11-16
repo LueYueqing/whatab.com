@@ -744,7 +744,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                     <tr>
                       <th className="admin-col-icon">图标</th>
                       <th>网站名称</th>
-                      <th>网址</th>
+                      <th className="admin-col-url">网址</th>
                       <th>
                         <button
                           type="button"
@@ -795,8 +795,8 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                             </span>
                           </div>
                         </td>
-                        <td>
-                          <a className="admin-url" href={site.url} target="_blank" rel="noreferrer">{site.url}</a>
+                        <td className="admin-col-url">
+                          <a className="admin-url" href={site.url} title={site.url} target="_blank" rel="noreferrer">{site.url}</a>
                         </td>
                         <td className="admin-num">{formatOpenSeconds(site.open_seconds)}</td>
                         <td>{siteCategoryText(site)}</td>
