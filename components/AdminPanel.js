@@ -291,6 +291,28 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
     }
   }
 
+  async function toggleSiteEnabled(site) {
+    const next = !site.is_enabled;
+    setBusy(true);
+    say('');
+    try {
+      await request('/home/admin/sites', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...site, is_enabled: next }),
+      });
+      setSites((current) => current.map((item) => (
+        item.id === site.id ? { ...item, is_enabled: next } : item
+      )));
+      if (form.id === site.id) setForm((current) => ({ ...current, is_enabled: next }));
+      say(next ? `已启用「${site.title}」` : `已停用「${site.title}」`, true);
+    } catch (error) {
+      say(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function uploadWallpaper(event) {
     event.preventDefault();
     const file = event.target.elements.file.files[0];
@@ -564,18 +586,32 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
               {loading ? <p className="admin-note">正在读取…</p> : null}
               <div className="admin-list">
                 {sites.map((site) => (
-                  <article className="admin-site" key={site.id}>
+                  <article className={site.is_enabled ? 'admin-site' : 'admin-site is-disabled'} key={site.id}>
                     {site.icon ? <img src={site.icon} alt="" /> : <span className="admin-icon-empty" />}
                     <div>
-                      <strong>{site.title}</strong>
-                      {site.is_enabled ? null : <em>未启用</em>}
-                      {site.user_id ? <em>用户 {site.user_id}</em> : null}
+                      <div className="admin-site-title">
+                        <strong>{site.title}</strong>
+                        <span className={site.is_enabled ? 'admin-status on' : 'admin-status off'}>
+                          {site.is_enabled ? '已启用' : '未启用'}
+                        </span>
+                        {site.user_id ? <em>用户 {site.user_id}</em> : null}
+                      </div>
                       <a className="admin-url" href={site.url} target="_blank" rel="noreferrer">{site.url}</a>
                       <span>{site.categories.map((item) => (
                         (navCategories.find((category) => category.category === item) || {}).category_note || item
-                      )).join('、')}</span>
+                      )).join('、') || '未分类'}</span>
                     </div>
                     <div className="admin-actions">
+                      {fields.is_enabled !== false ? (
+                        <button
+                          className="admin-btn"
+                          type="button"
+                          disabled={busy}
+                          onClick={() => toggleSiteEnabled(site)}
+                        >
+                          {site.is_enabled ? '停用' : '启用'}
+                        </button>
+                      ) : null}
                       <button className="admin-btn" type="button" onClick={() => openEditor(site)}>编辑</button>
                       <button className="admin-btn danger" type="button" disabled={busy} onClick={() => removeSite(site)}>删除</button>
                     </div>
