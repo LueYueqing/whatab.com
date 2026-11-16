@@ -1267,7 +1267,7 @@ $('#console-title-box').click(function(){
         }
         renderNavCategoryList();
         resetNavSites();
-        if(window.reloadNavSites && navViewCategory!=='catshare' && String(navViewCategory).indexOf('my-')!==0){
+        if(window.reloadNavSites){
             window.reloadNavSites();
         }
     }

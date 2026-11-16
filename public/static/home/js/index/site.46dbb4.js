@@ -345,9 +345,8 @@ function site(){
             req.open('post','/home/user/clogin',true);//异步
             fd.append("bodyWidth",bodyWidth);
             var navCategories=(typeof readNavCategories==='function') ? readNavCategories() : [];
-            if(navCategories.length){
-                fd.append('categories', JSON.stringify(navCategories));
-            }
+            // 始终带上，空数组表示「默认」，避免服务端回退到旧的 nav_categories
+            fd.append('categories', JSON.stringify(navCategories));
             req.onreadystatechange=function(){
                 if(req.readyState==4 && req.status==200){
                     if(requestId!==navRequestId){
@@ -371,8 +370,12 @@ function site(){
                                 writeStoredCategory(userData['bg_category']);
                             }
                         }
-                        if(Array.isArray(userData['nav_categories']) && typeof writeNavCategories==='function'){
-                            writeNavCategories(userData['nav_categories']);
+                        // 切分类刷新图标时不要用服务端旧偏好盖掉刚选的分类
+                        if(!iconsOnly && Array.isArray(userData['nav_categories']) && typeof writeNavCategories==='function'){
+                            var localNav=(typeof readNavCategories==='function') ? readNavCategories() : [];
+                            if(!localNav.length){
+                                writeNavCategories(userData['nav_categories']);
+                            }
                         }
                     }
                     openHome(!!iconsOnly);

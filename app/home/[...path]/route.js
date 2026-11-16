@@ -214,17 +214,51 @@ function safeCategory(value) {
   return category;
 }
 
-async function homepageSiteData(user, categories) {
+async function homepageSiteData(user, categories, request = null) {
+  const selected = readCategoryList(categories);
+  if (selected.length) {
+    const code = selected[0];
+    if (code === CATSHARE_CODE && request) {
+      const share = await categoryShareFromRequest(request).catch(() => null);
+      if (!share || share.stopped) return [];
+      const rows = await listSharedCategorySites(share, 0, 18);
+      return rows.map((item, index) => ({
+        sort: index,
+        title: item.title,
+        url: item.url,
+        icon: item.icon,
+      }));
+    }
+    const personalCode = parsePersonalNavCode(code);
+    if (personalCode) {
+      if (!user) return [];
+      try {
+        const cats = await listUserSiteCategories(user.id);
+        const found = cats.find((item) => item.code === personalCode);
+        if (!found) return [];
+        const rows = await listUserSites(user.id, { categoryId: found.id });
+        return rows.slice(0, 18).map((item, index) => ({
+          sort: index,
+          title: item.title,
+          url: item.url,
+          icon: item.icon,
+        }));
+      } catch {
+        return [];
+      }
+    }
+    return listNavSites(0, selected);
+  }
   if (user) {
     try {
-      // 带个人分类的网址留给分类栏，不直接摊进首页图标区
+      // 未选分类时：未分类个人网址进首页图标区；有分类的留给分类栏
       const personal = await listUserSites(user.id, { uncategorizedOnly: true });
       if (personal.length) return personal;
     } catch {
       /* 个人网址读失败时仍显示公共网址 */
     }
   }
-  return listNavSites(0, categories);
+  return listNavSites(0, []);
 }
 
 async function homepageSiteCategories(user) {
@@ -629,9 +663,10 @@ async function handle(request, context) {
 
   if (key === '/home/user/clogin' || key === '/home/user/login') {
     const fields = await readFields(request);
+    const hasCategories = Object.prototype.hasOwnProperty.call(fields, 'categories');
     const requested = readCategoryList(fields.categories);
-    const categories = requested.length ? requested : (user?.nav_categories || []);
-    data.siteData = await homepageSiteData(user, categories);
+    const categories = hasCategories ? requested : (user?.nav_categories || []);
+    data.siteData = await homepageSiteData(user, categories, request);
     data.siteCategories = await homepageSiteCategories(user);
     const response = NextResponse.json(data);
     const token = readSessionToken(request);
@@ -678,7 +713,11 @@ async function handle(request, context) {
     const fields = await readFields(request);
     const categories = readCategoryList(fields.categories);
     return NextResponse.json({
-      siteData: await homepageSiteData(user, categories.length ? categories : (user?.nav_categories || [])),
+      siteData: await homepageSiteData(
+        user,
+        categories.length ? categories : (user?.nav_categories || []),
+        request,
+      ),
       siteCategories: await homepageSiteCategories(user),
       uiData: data.uiData,
     });
