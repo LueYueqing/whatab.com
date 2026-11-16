@@ -40,6 +40,7 @@ export default function AdminPanel({ name }) {
   const [sitePage, setSitePage] = useState(20);
   const [siteQuery, setSiteQuery] = useState('');
   const [draftQuery, setDraftQuery] = useState('');
+  const [siteCategory, setSiteCategory] = useState('');
   const [navCategories, setNavCategories] = useState([]);
   const [fields, setFields] = useState({ sort_order: true, popularity: true, is_enabled: true });
   const [wallpapers, setWallpapers] = useState([]);
@@ -77,7 +78,7 @@ export default function AdminPanel({ name }) {
     let ignore = false;
     setLoading(true);
     const url = tab === 'sites'
-      ? `/home/admin/sites?offset=${siteOffset}&q=${encodeURIComponent(siteQuery)}`
+      ? `/home/admin/sites?offset=${siteOffset}&q=${encodeURIComponent(siteQuery)}&category=${encodeURIComponent(siteCategory)}`
       : `/home/admin/wallpapers?offset=${wallpaperOffset}&category=${encodeURIComponent(wallpaperCategory)}`;
     request(url).then((data) => {
       if (ignore) return;
@@ -108,7 +109,7 @@ export default function AdminPanel({ name }) {
     return () => {
       ignore = true;
     };
-  }, [tab, siteOffset, siteQuery, wallpaperOffset, wallpaperCategory, revision]);
+  }, [tab, siteOffset, siteQuery, siteCategory, wallpaperOffset, wallpaperCategory, revision]);
 
   function toggleCategory(category) {
     setForm((current) => ({
@@ -287,7 +288,7 @@ export default function AdminPanel({ name }) {
 
       {tab === 'sites' ? (
         <>
-          <p className="admin-note">首页图标使用已启用的前 18 个，按排序数字从小到大。分类列表按热度从高到低。</p>
+          <p className="admin-note">首页默认图标使用已启用的前 18 个，按排序从小到大。分类栏（含出海插件）按热度展示对应分类网址。</p>
           <div className="admin-actions">
             <button className="admin-btn primary" type="button" onClick={() => openEditor(null)}>添加网址</button>
           </div>
@@ -306,21 +307,24 @@ export default function AdminPanel({ name }) {
                     <button className="admin-btn" type="button" disabled={collecting || busy} onClick={() => collectIcon(true)}>采集图标</button>
                   </span>
                 </label>
-                <p className="admin-note">采集会读取网页里的图标链接，没有时再试 /favicon.ico。</p>
+                <p className="admin-note">采集会读取网页图标；Chrome 应用店条目会优先用扩展图标。</p>
                 {form.icon ? <img className="admin-icon-preview" src={form.icon} alt="" /> : null}
                 <label>关键词<input value={form.keyword} onChange={(event) => setForm({ ...form, keyword: event.target.value })} /></label>
                 <label>说明<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={2} /></label>
-                <div className="admin-checks">
-                  {navCategories.map((item) => (
-                    <label key={item.category}>
-                      <input
-                        type="checkbox"
-                        checked={form.categories.includes(item.category)}
-                        onChange={() => toggleCategory(item.category)}
-                      />
-                      {item.category_note}
-                    </label>
-                  ))}
+                <div className="admin-category-block">
+                  <p className="admin-note" style={{ marginBottom: 8 }}>所属分类（可多选，对应首页分类栏）</p>
+                  <div className="admin-checks">
+                    {navCategories.map((item) => (
+                      <label key={item.category}>
+                        <input
+                          type="checkbox"
+                          checked={form.categories.includes(item.category)}
+                          onChange={() => toggleCategory(item.category)}
+                        />
+                        {item.category_note}
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <div className="admin-grid">
                   {fields.sort_order !== false ? (
@@ -348,6 +352,19 @@ export default function AdminPanel({ name }) {
             setSiteOffset(0);
             setSiteQuery(draftQuery.trim());
           }}>
+            <select
+              value={siteCategory}
+              onChange={(event) => {
+                setSiteOffset(0);
+                setSiteCategory(event.target.value);
+              }}
+              aria-label="按分类筛选"
+            >
+              <option value="">全部分类</option>
+              {navCategories.map((item) => (
+                <option key={item.category} value={item.category}>{item.category_note}</option>
+              ))}
+            </select>
             <input value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} placeholder="搜索名称、网址或关键词" />
             <button className="admin-btn" type="submit">搜索</button>
           </form>
