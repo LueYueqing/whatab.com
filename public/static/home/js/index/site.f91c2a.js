@@ -274,7 +274,7 @@ function site(){
             if(data.status==='active'){
                 if(Number(data.own)===1){
                     clearLocalCatShare();
-                    done();
+                    done(false);
                     return;
                 }
                 window.__jfCatShare={
@@ -292,9 +292,13 @@ function site(){
                     try{
                         writeNavCategories([data.category||'catshare']);
                     }catch(e){}
+                    // 首次带 ?cat= 进入时，前面 clogin 已按默认分类取过图标；
+                    // 这里切到分享分类后必须重新拉一次，否则要刷新才对。
+                    done(true);
+                    return;
                 }
             }
-            done();
+            done(false);
         };
         req.send(fd);
     }
@@ -322,9 +326,13 @@ function site(){
             return;
         }
         prepareShare(function(){
-            prepareCatShare(function(){
+            prepareCatShare(function(needReloadSites){
                 if(userData && Number(userData['user_type'])===1){
                     dropForeignReady();
+                }
+                if(needReloadSites){
+                    clogin(false);
+                    return;
                 }
                 toWriteSite(false);
             });

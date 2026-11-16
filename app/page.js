@@ -22,7 +22,7 @@ const HOME_SCRIPTS = [
   '/static/home/js/index/search.52bc13.js',
   '/static/home/js/index/keyword.bc4442.js',
   '/static/home/js/index/console.5f928d.js',
-  '/static/home/js/index/site.e7c744.js',
+  '/static/home/js/index/site.f91c2a.js',
   '/static/home/js/index/base.46dbb4.js',
 ];
 
