@@ -76,6 +76,7 @@
     -ms-user-select: none;
 }
 
+#manageSiteCat-btn,
 #deleteAllSite-btn{
     color:white;
     margin-right:20px;
@@ -86,6 +87,13 @@
 	-moz-opacity: 0.3;
 	-khtml-opacity: 0.3;
 	opacity: 0.3;
+}
+
+#manageSiteCat-btn:hover{
+	filter: alpha(opacity=100);
+	-moz-opacity: 1;
+	-khtml-opacity: 1;
+	opacity: 1;
 }
 
 #deleteAllSite-btn:hover{

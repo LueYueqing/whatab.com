@@ -99,6 +99,7 @@
         <div id="site-wrap">
             <div id="site-text-span">自定义你喜爱的网站，拖动可排序</div>
             <div id="site-btn-box">
+                <div id="manageSiteCat-btn">管理我的分类</div>
                 <div id="deleteAllSite-btn">重置网站数据</div>
                 <div id="site-confirm">保存</div>
             </div>
@@ -207,6 +208,12 @@
                 <div class="edit-name">名称</div>
                 <input id="nssNameInput"  class='edit-input' maxlength="20" type="text" placeholder="输入网站名称"
                 name="">
+            </div>
+            <div class="edit-list newSiteSetListBox">
+                <div class="edit-name">分类</div>
+                <select id="nssCategorySelect" class="edit-input" style="height:36px;padding:0 8px;">
+                    <option value="">未分类（首页图标）</option>
+                </select>
             </div>
             <div class="edit-list newSiteSetListBox">
                 <div class='edit-list-icon'>
@@ -329,6 +336,9 @@
         <div id="nav-category-panel">
             <div id="nav-category-list"></div>
             <div id="nav-site-pane">
+                <div id="nav-site-toolbar" style="display:none;padding:8px 10px 0;">
+                    <button type="button" id="nav-catshare-save" class="edit-confirm-btn" style="display:inline-block;padding:6px 12px;border:0;border-radius:8px;cursor:pointer;">另存为我的分类</button>
+                </div>
                 <div id="nav-site-list"></div>
                 <div id="nav-site-status"></div>
             </div>

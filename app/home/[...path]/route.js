@@ -21,11 +21,15 @@ import { createAlipayPayment, createWechatPayment, paymentReady, syncVipOrder } 
 import { fetchSiteMeta } from '../../../lib/site-meta';
 import {
   createUserSite,
+  createUserSiteCategory,
   deleteUserSite,
+  deleteUserSiteCategory,
   editUserSite,
+  listUserSiteCategories,
   listUserSites,
   resetUserSites,
   sortUserSites,
+  updateUserSiteCategory,
 } from '../../../lib/user-sites';
 import { isLibraryWallpaperUrl, isUserBackgroundUrl } from '../../../lib/oss';
 import {
@@ -43,6 +47,15 @@ import {
   stepSharedWallpaper,
   wallpaperShare,
 } from '../../../lib/shares';
+import {
+  CATSHARE_CODE,
+  categoryShareFromRequest,
+  clearCategoryShareCookies,
+  handleCategoryShare,
+  listSharedCategorySites,
+  parsePersonalNavCode,
+  personalNavCode,
+} from '../../../lib/category-shares';
 import { createVipOrder, FREE_UPLOAD_LIMIT, VIP_PRICE_YUAN } from '../../../lib/vip';
 
 export const dynamic = 'force-dynamic';
@@ -197,21 +210,82 @@ function asStringList(value) {
 function safeCategory(value) {
   const category = String(value || '').trim();
   if (!category) return '';
-  if (!/^[a-z0-9-]{1,32}$/.test(category)) return '';
+  if (!/^[a-z0-9-]{1,40}$/.test(category)) return '';
   return category;
 }
 
 async function homepageSiteData(user, categories) {
   if (user) {
     try {
-      // 带个人分类的网址留给分类管理，不直接摊进首页导航栏
-      const personal = (await listUserSites(user.id)).filter((item) => item.category_id == null);
+      // 带个人分类的网址留给分类栏，不直接摊进首页图标区
+      const personal = await listUserSites(user.id, { uncategorizedOnly: true });
       if (personal.length) return personal;
     } catch {
       /* 个人网址读失败时仍显示公共网址 */
     }
   }
   return listNavSites(0, categories);
+}
+
+async function homepageSiteCategories(user) {
+  if (!user) return [];
+  try {
+    return await listUserSiteCategories(user.id);
+  } catch {
+    return [];
+  }
+}
+
+async function listNavCategoriesForHome(request, user) {
+  const rows = await listNavCategories();
+  const out = [];
+  const share = await categoryShareFromRequest(request).catch(() => null);
+  if (share && !share.stopped) {
+    out.push({
+      category: CATSHARE_CODE,
+      category_note: `分享·${share.title || '分类'}`,
+      total: 0,
+      shared: 1,
+    });
+  }
+  if (user) {
+    const cats = await homepageSiteCategories(user);
+    for (const cat of cats) {
+      const sites = await listUserSites(user.id, { categoryId: cat.id });
+      out.push({
+        category: personalNavCode(cat.code),
+        category_note: `我的：${cat.name}`,
+        total: sites.length,
+        personal: 1,
+        category_id: cat.id,
+      });
+    }
+  }
+  return out.concat(rows);
+}
+
+async function listNavSitesForHome(request, user, category, offset) {
+  const safe = safeCategory(category);
+  if (!safe) return [];
+  if (safe === CATSHARE_CODE) {
+    const share = await categoryShareFromRequest(request);
+    if (!share || share.stopped) return [];
+    return listSharedCategorySites(share, offset, 30);
+  }
+  const personalCode = parsePersonalNavCode(safe);
+  if (personalCode) {
+    if (!user) return [];
+    const cats = await listUserSiteCategories(user.id);
+    const found = cats.find((item) => item.code === personalCode);
+    if (!found) return [];
+    const all = await listUserSites(user.id, { categoryId: found.id });
+    return all.slice(offset, offset + 30).map((item) => ({
+      title: item.title,
+      url: item.url,
+      icon: item.icon,
+    }));
+  }
+  return listNavCategorySites(safe, offset, 30);
 }
 
 async function readSiteRequest(request) {
@@ -548,6 +622,9 @@ async function handle(request, context) {
   if (key.startsWith('/home/share/')) {
     return handleShare(request, key.slice('/home/share/'.length), user);
   }
+  if (key.startsWith('/home/catshare/')) {
+    return handleCategoryShare(request, key.slice('/home/catshare/'.length), user);
+  }
   const data = userPayload(payload(), user);
 
   if (key === '/home/user/clogin' || key === '/home/user/login') {
@@ -555,6 +632,7 @@ async function handle(request, context) {
     const requested = readCategoryList(fields.categories);
     const categories = requested.length ? requested : (user?.nav_categories || []);
     data.siteData = await homepageSiteData(user, categories);
+    data.siteCategories = await homepageSiteCategories(user);
     const response = NextResponse.json(data);
     const token = readSessionToken(request);
     if (user && token) response.cookies.set('wa_session', token, sessionCookieOptions());
@@ -565,6 +643,7 @@ async function handle(request, context) {
     const response = NextResponse.json({ success: 1 });
     response.cookies.set('wa_session', '', { path: '/', maxAge: 0 });
     clearShareCookies(response);
+    clearCategoryShareCookies(response);
     return response;
   }
   if (key === '/home/user/prefs') {
@@ -600,8 +679,33 @@ async function handle(request, context) {
     const categories = readCategoryList(fields.categories);
     return NextResponse.json({
       siteData: await homepageSiteData(user, categories.length ? categories : (user?.nav_categories || [])),
+      siteCategories: await homepageSiteCategories(user),
       uiData: data.uiData,
     });
+  }
+  if (key === '/home/site/categories') {
+    if (!user) return NextResponse.json({ error: '请先微信登录' }, { status: 401 });
+    const fields = await readFields(request);
+    const action = String(fields.action || 'list').trim();
+    try {
+      if (action === 'list') {
+        return NextResponse.json({ categories: await listUserSiteCategories(user.id) });
+      }
+      if (action === 'create') {
+        const category = await createUserSiteCategory(user.id, fields);
+        return NextResponse.json({ success: 1, category });
+      }
+      if (action === 'update') {
+        const category = await updateUserSiteCategory(user.id, fields);
+        return NextResponse.json({ success: 1, category });
+      }
+      if (action === 'delete') {
+        return NextResponse.json(await deleteUserSiteCategory(user.id, fields.id));
+      }
+    } catch (error) {
+      return NextResponse.json({ error: error.expose ? error.message : '保存失败，请稍后再试' });
+    }
+    return NextResponse.json({ error: '不支持的操作' });
   }
   if (key === '/home/site/getIcon') {
     if (!user) return NextResponse.json({ error: '请先微信登录' });
@@ -644,14 +748,14 @@ async function handle(request, context) {
     }
   }
   if (key === '/home/nav/categories') {
-    return NextResponse.json(await listNavCategories());
+    return NextResponse.json(await listNavCategoriesForHome(request, user));
   }
   if (key === '/home/nav/sites') {
     const fields = await readFields(request);
     const category = safeCategory(fields.category);
     const offset = Math.max(0, Number.parseInt(fields.offset, 10) || 0);
     if (!category) return NextResponse.json([]);
-    return NextResponse.json(await listNavCategorySites(category, offset, 30));
+    return NextResponse.json(await listNavSitesForHome(request, user, category, offset));
   }
   if (key === '/home/bg/categories') {
     return NextResponse.json(await listCategories(user, await wallpaperShare(request, user)));

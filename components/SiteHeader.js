@@ -4,7 +4,7 @@ const LINKS = [
   ['/contact', '联系我们'],
   ['/guide', '使用指南'],
   ['/set-homepage/upload', '上传壁纸'],
-  ['/share', '分享主页'],
+  ['/share', '分享'],
   ['/mcp', 'MCP'],
 ];
 

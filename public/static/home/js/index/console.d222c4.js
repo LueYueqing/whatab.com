@@ -152,7 +152,7 @@ function readNavCategories(){
     var list=parseNavCategoryRaw(raw);
     for(var i=0;i<list.length;i++){
         var code=String(list[i]||'').trim();
-        if(!/^[a-z0-9-]{1,32}$/.test(code) || seen[code]){
+        if(!/^[a-z0-9-]{1,40}$/.test(code) || seen[code]){
             continue;
         }
         seen[code]=1;
@@ -273,7 +273,7 @@ function consolejs(uiData){
             box.style.cssText='position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
             var card=document.createElement('div');
             card.style.cssText='width:min(440px,calc(100% - 32px));background:#fff;color:#333;border-radius:12px;padding:20px;line-height:1.6;';
-            card.innerHTML='<div style="font-size:16px;margin-bottom:8px;">分享我的主页</div><p id="share-link-note" style="margin:0 0 8px;font-size:13px;color:#666;"></p><input id="share-link-input" readonly style="width:100%;box-sizing:border-box;margin:8px 0;padding:8px;border:1px solid #ddd;border-radius:8px;color:#333;"><p id="share-link-stat" style="margin:0 0 8px;font-size:13px;color:#666;"></p><div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;"><a id="share-manage-link" href="/share" style="margin-right:auto;color:#2c7bf6;">管理分享</a><button type="button" id="share-copy-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#2c7bf6;color:#fff;cursor:pointer;">复制链接</button><button type="button" id="share-close-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#f2f2f2;color:#333;cursor:pointer;">关闭</button></div>';
+            card.innerHTML='<div style="font-size:16px;margin-bottom:8px;">分享壁纸</div><p id="share-link-note" style="margin:0 0 8px;font-size:13px;color:#666;"></p><input id="share-link-input" readonly style="width:100%;box-sizing:border-box;margin:8px 0;padding:8px;border:1px solid #ddd;border-radius:8px;color:#333;"><p id="share-link-stat" style="margin:0 0 8px;font-size:13px;color:#666;"></p><div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;"><a id="share-manage-link" href="/share" style="margin-right:auto;color:#2c7bf6;">管理壁纸/分类分享</a><button type="button" id="share-copy-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#2c7bf6;color:#fff;cursor:pointer;">复制链接</button><button type="button" id="share-close-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#f2f2f2;color:#333;cursor:pointer;">关闭</button></div>';
             box.appendChild(card);
             document.body.appendChild(box);
             box.addEventListener('click', function(event){
@@ -298,8 +298,8 @@ function consolejs(uiData){
             };
         }
         document.getElementById('share-link-note').textContent=data.reused
-            ? '这是你正在使用的分享链接。要新建或停止，请打开「分享主页」。'
-            : '已生成分享链接。别人打开后，壁纸库里会出现「分享」，可以预览和轮播你上传的壁纸。';
+            ? '这是你正在使用的壁纸分享链接。要新建、停止，或分享网址分类，请打开「管理壁纸/分类分享」。'
+            : '已生成壁纸分享链接。别人打开后，壁纸库里会出现「分享」。若要分享网址分类，请到分享页的「分类分享」。';
         document.getElementById('share-link-input').value=data.url||'';
         document.getElementById('share-link-stat').textContent=data.open_count
             ? ('已打开 '+data.open_count+' 次'+(data.last_opened_at ? '，最近 '+data.last_opened_at : ''))
@@ -1100,6 +1100,49 @@ $('#console-title-box').click(function(){
         req.send();
     }
 
+    function updateCatShareToolbar(){
+        var bar=document.getElementById('nav-site-toolbar');
+        var btn=document.getElementById('nav-catshare-save');
+        if(!bar || !btn){
+            return;
+        }
+        var show=navViewCategory==='catshare' && window.__jfCatShare;
+        bar.style.display=show ? 'block' : 'none';
+        if(!btn.dataset.bound){
+            btn.dataset.bound='1';
+            btn.onclick=function(){
+                if(!(window.__jfUser && Number(window.__jfUser.user_type)===1)){
+                    location.href='/wechat/login?next=/';
+                    return;
+                }
+                var defaultName='分享·'+((window.__jfCatShare && window.__jfCatShare.title) || '分类');
+                var name=window.prompt('另存为我的分类，可改名称', defaultName);
+                if(name==null){
+                    return;
+                }
+                var fd=new FormData();
+                fd.append('name', String(name).trim() || defaultName);
+                var req=new XMLHttpRequest();
+                req.open('POST','/home/catshare/save',true);
+                req.onreadystatechange=function(){
+                    if(req.readyState!==4){
+                        return;
+                    }
+                    var data={};
+                    try{ data=JSON.parse(req.response||'{}'); }catch(e){}
+                    if(req.status!==200 || data.error){
+                        setNavSiteStatus(data.error || '另存失败');
+                        return;
+                    }
+                    setNavSiteStatus('已另存为「'+(data.category && data.category.name ? data.category.name : '我的分类')+'」，拷贝了 '+(data.copied||0)+' 个网址');
+                    navCategoryList=[];
+                    openNavCategories();
+                };
+                req.send(fd);
+            };
+        }
+    }
+
     function renderNavCategoryList(){
         var list=document.getElementById('nav-category-list');
         list.innerHTML='';
@@ -1116,6 +1159,7 @@ $('#console-title-box').click(function(){
             };
             list.appendChild(row);
         }
+        updateCatShareToolbar();
     }
 
     function setNavSiteStatus(text){
@@ -1209,7 +1253,7 @@ $('#console-title-box').click(function(){
     }
 
     function chooseNavCategory(category){
-        if(category && !/^[a-z0-9-]{1,32}$/.test(category)){
+        if(category && !/^[a-z0-9-]{1,40}$/.test(category)){
             return;
         }
         if(category===navViewCategory && document.getElementById('nav-site-list').children.length){
@@ -1218,10 +1262,12 @@ $('#console-title-box').click(function(){
         navViewCategory=category||'';
         navCategoriesSelected=navViewCategory ? [navViewCategory] : [];
         writeNavCategories(navCategoriesSelected);
-        saveUserPref({nav_categories: JSON.stringify(navCategoriesSelected)});
+        if(navViewCategory!=='catshare'){
+            saveUserPref({nav_categories: JSON.stringify(navCategoriesSelected)});
+        }
         renderNavCategoryList();
         resetNavSites();
-        if(window.reloadNavSites){
+        if(window.reloadNavSites && navViewCategory!=='catshare' && String(navViewCategory).indexOf('my-')!==0){
             window.reloadNavSites();
         }
     }

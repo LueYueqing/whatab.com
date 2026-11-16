@@ -7,17 +7,17 @@ import { findUserBySession } from '../../lib/users';
 export const dynamic = 'force-dynamic';
 
 export const metadata = pageMeta({
-  title: '分享我的主页：把上传的壁纸分享给别人 - 哇塔主页',
+  title: '分享壁纸与网址分类 - 哇塔主页',
   description:
-    '在哇塔主页生成分享链接，把你上传的壁纸分享给别人。对方打开后，壁纸库会出现「分享」，可预览和轮播；对方自己的「自选」仍然只放本人上传的壁纸。',
+    '在哇塔主页生成壁纸分享或网址分类分享链接。壁纸分享让对方在壁纸库看到「分享」；分类分享让对方首页出现临时分类并实时同步，登录后可另存为自己的分类。',
   path: '/share',
 });
 
 function Shell({ children }) {
   return (
     <InnerShell
-      title="分享我的主页"
-      lead="把你上传的壁纸通过链接分享出去，对方可在壁纸库的「分享」里预览和轮播。"
+      title="分享壁纸与分类"
+      lead="壁纸分享与网址分类分享分开管理：一个改对方壁纸库，一个只在首页加临时分类。"
       current="/share"
       variant="tool"
     >
@@ -26,6 +26,38 @@ function Shell({ children }) {
         .share-note { color: var(--inner-muted); line-height: 1.7; }
         .share-message { color: var(--inner-ok); }
         .share-message.bad { color: var(--inner-danger); }
+        .share-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+        .share-tab {
+          border: 1px solid var(--inner-line);
+          border-radius: 999px;
+          padding: 6px 14px;
+          background: var(--inner-surface);
+          color: var(--inner-muted);
+          cursor: pointer;
+          font: inherit;
+          font-size: 13px;
+        }
+        .share-tab.active {
+          background: var(--inner-accent);
+          border-color: var(--inner-accent);
+          color: #fff;
+        }
+        .share-form {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px 16px;
+          align-items: center;
+          margin: 12px 0;
+        }
+        .share-form select {
+          min-width: 180px;
+          padding: 6px 8px;
+          border: 1px solid var(--inner-line);
+          border-radius: 8px;
+          background: var(--inner-surface);
+          color: var(--inner-ink);
+          font: inherit;
+        }
         .share-btn {
           border: 1px solid var(--inner-line);
           border-radius: 8px;
@@ -64,6 +96,7 @@ function Shell({ children }) {
           color: var(--inner-muted);
         }
         .share-panel a { color: var(--inner-accent); }
+        .share-panel code { font-size: 12px; }
       `}</style>
       {children}
     </InnerShell>
@@ -85,12 +118,12 @@ export default async function SharePage() {
       <Shell>
         <div className="share-panel">
           <p className="share-note">
-            把你在
-            <a href="/set-homepage/upload">上传壁纸</a>
-            里存好的图片分享出去。别人打开你的分享链接后，壁纸库会出现「分享」，可以预览和轮播这些壁纸；已经登录的人也一样，他的「自选」仍然只放他自己的壁纸。
+            登录后可管理两类分享：壁纸分享（对方壁纸库出现「分享」），以及网址分类分享（对方首页出现临时分类，可另存）。
           </p>
           <p className="share-note">
-            登录后可以创建、复制、停止或重新启用分享链接，并查看打开次数。
+            壁纸来自
+            <a href="/set-homepage/upload">上传壁纸</a>
+            ；个人网址分类可在首页「自定义」里管理。
           </p>
           <p>
             <a className="inner-btn primary" href="/wechat/login?next=/share">微信登录</a>

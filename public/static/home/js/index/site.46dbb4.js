@@ -27,8 +27,17 @@ function site(){
         return match ? match[1].toLowerCase() : '';
     }
 
+    function catShareQueryToken(){
+        var match=location.search.match(/(?:^|[?&])cat=([a-f0-9]{32})(?:&|$)/i);
+        return match ? match[1].toLowerCase() : '';
+    }
+
     function shareFlagOn(){
         return /(?:^|;\s*)wa_shared=1(?:;|$)/.test(document.cookie);
+    }
+
+    function catShareFlagOn(){
+        return /(?:^|;\s*)wa_cat_shared=1(?:;|$)/.test(document.cookie);
     }
 
     function clearLocalShare(){
@@ -37,6 +46,30 @@ function site(){
         try{ localStorage.removeItem('jf_bg_ready'); }catch(e){}
         document.cookie='jf_bg_category=;path=/;max-age=0';
         document.cookie='wa_shared=;path=/;max-age=0';
+    }
+
+    function clearLocalCatShare(){
+        window.__jfCatShare=null;
+        document.cookie='wa_cat_shared=;path=/;max-age=0';
+    }
+
+    function stripQueryParams(keys){
+        try{
+            var url=new URL(location.href);
+            var changed=false;
+            for(var i=0;i<keys.length;i++){
+                if(url.searchParams.has(keys[i])){
+                    url.searchParams.delete(keys[i]);
+                    changed=true;
+                }
+            }
+            if(changed){
+                var next=url.pathname+(url.search||'')+(url.hash||'');
+                history.replaceState(null, '', next);
+            }
+        }catch(e){
+            history.replaceState(null, '', location.pathname+location.hash);
+        }
     }
 
     window.showShareStopped=function(){
@@ -91,6 +124,53 @@ function site(){
         document.body.appendChild(box);
     }
 
+    function showCatShareWelcome(title, name){
+        if(document.getElementById('catshare-welcome')){
+            return;
+        }
+        var box=document.createElement('div');
+        box.id='catshare-welcome';
+        box.style.cssText='position:fixed;inset:0;z-index:1300;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
+        var card=document.createElement('div');
+        card.style.cssText='width:min(460px,calc(100% - 32px));background:#fff;color:#333;border-radius:12px;padding:22px;line-height:1.7;';
+        var text=document.createElement('p');
+        text.style.margin='0 0 16px';
+        text.textContent='您打开了「'+(name||'微信用户')+'」分享的网址分类「'+(title||'分类')+'」。分类栏会出现临时分类，内容会实时同步；登录后可另存为自己的分类。';
+        var actions=document.createElement('div');
+        actions.style.cssText='display:flex;gap:12px;justify-content:flex-end;align-items:center;';
+        var ok=document.createElement('button');
+        ok.type='button';
+        ok.textContent='知道了';
+        ok.style.cssText='border:0;border-radius:100px;padding:8px 16px;background:#2c7bf6;color:#fff;cursor:pointer;';
+        ok.onclick=function(){ box.remove(); };
+        actions.appendChild(ok);
+        card.appendChild(text);
+        card.appendChild(actions);
+        box.appendChild(card);
+        document.body.appendChild(box);
+    }
+
+    window.showCatShareStopped=function(){
+        clearLocalCatShare();
+        if(document.getElementById('catshare-stopped')){
+            return;
+        }
+        var box=document.createElement('div');
+        box.id='catshare-stopped';
+        box.style.cssText='position:fixed;inset:0;z-index:1300;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
+        var card=document.createElement('div');
+        card.style.cssText='width:min(420px,calc(100% - 32px));background:#fff;color:#333;border-radius:12px;padding:22px;line-height:1.7;';
+        var text=document.createElement('p');
+        text.style.margin='0';
+        text.textContent='分享给您的网址分类已经取消';
+        card.appendChild(text);
+        box.appendChild(card);
+        document.body.appendChild(box);
+        setTimeout(function(){
+            location.replace('/');
+        },4000);
+    };
+
     function prepareShare(done){
         var token=shareQueryToken();
         if(!token && !shareFlagOn()){
@@ -111,7 +191,7 @@ function site(){
             var data={};
             try{ data=JSON.parse(req.response||'{}'); }catch(e){}
             if(req.status===200 && token){
-                history.replaceState(null, '', location.pathname+location.hash);
+                stripQueryParams(['share']);
             }
             if(req.status!==200){
                 done();
@@ -155,6 +235,70 @@ function site(){
         req.send(fd);
     }
 
+    function prepareCatShare(done){
+        var token=catShareQueryToken();
+        if(!token && !catShareFlagOn()){
+            done();
+            return;
+        }
+        var fd=new FormData();
+        if(token){
+            fd.append('token', token);
+            fd.append('count', '1');
+        }
+        var req=new XMLHttpRequest();
+        req.open('POST','/home/catshare/visit',true);
+        req.onreadystatechange=function(){
+            if(req.readyState!==4){
+                return;
+            }
+            var data={};
+            try{ data=JSON.parse(req.response||'{}'); }catch(e){}
+            if(req.status===200 && token){
+                stripQueryParams(['cat']);
+            }
+            if(req.status!==200){
+                done();
+                return;
+            }
+            if(data.status==='stopped'){
+                window.showCatShareStopped();
+                done();
+                return;
+            }
+            if(data.status==='missing'){
+                clearLocalCatShare();
+                done();
+                return;
+            }
+            if(data.status==='active'){
+                if(Number(data.own)===1){
+                    clearLocalCatShare();
+                    done();
+                    return;
+                }
+                window.__jfCatShare={
+                    title: data.title||'分享分类',
+                    name: data.name||'微信用户',
+                    category: data.category||'catshare'
+                };
+                if(token){
+                    var seen='';
+                    try{ seen=localStorage.getItem('wa_cat_seen_'+token)||''; }catch(e){}
+                    if(!seen){
+                        try{ localStorage.setItem('wa_cat_seen_'+token,'1'); }catch(e){}
+                        showCatShareWelcome(data.title, data.name);
+                    }
+                    try{
+                        writeNavCategories([data.category||'catshare']);
+                    }catch(e){}
+                }
+            }
+            done();
+        };
+        req.send(fd);
+    }
+
     function dropForeignReady(){
         var id=userData && userData.id;
         if(!id){
@@ -178,10 +322,12 @@ function site(){
             return;
         }
         prepareShare(function(){
-            if(userData && Number(userData['user_type'])===1){
-                dropForeignReady();
-            }
-            toWriteSite(false);
+            prepareCatShare(function(){
+                if(userData && Number(userData['user_type'])===1){
+                    dropForeignReady();
+                }
+                toWriteSite(false);
+            });
         });
     }
 
@@ -213,7 +359,11 @@ function site(){
                     writeSiteMenu=ajaxData['siteData'];
                     engineData=ajaxData['engineData'];
                     uiData=ajaxData['uiData'];
+                    window.__jfSiteCategories=Array.isArray(ajaxData['siteCategories']) ? ajaxData['siteCategories'] : [];
                     window.__jfUser=userData||{user_type:0};
+                    if(typeof fillSiteCategorySelect==='function'){
+                        fillSiteCategorySelect();
+                    }
                     if(userData && userData['user_type']==1){
                         if(userData['bg_category'] && typeof writeStoredCategory==='function'){
                             var localCategory=typeof readStoredCategory==='function' ? readStoredCategory() : '';
@@ -281,6 +431,8 @@ function site(){
                     document.cookie='loadingbg=;path=/;max-age=0';
                     document.cookie='loadingbg=;max-age=0';
                     document.cookie='wa_shared=;path=/;max-age=0';
+                    document.cookie='wa_cat_shared=;path=/;max-age=0';
+                    window.__jfCatShare=null;
                 }
             }
         }
@@ -414,11 +566,149 @@ function site(){
 
 	var oNssUrlInput=document.getElementById('nssUrlInput');
 	var oNssNameInput=document.getElementById('nssNameInput');
+	var oNssCategorySelect=document.getElementById('nssCategorySelect');
 	var oNssIconInput=document.getElementById('nssIconInput');
 	var oNssIconBox=document.getElementById('nssIconBox');
 	var oNssImg=oNssIconBox.getElementsByTagName('img')[0];
 	var oNssiconfile=document.getElementById('iconfile');
 
+    function fillSiteCategorySelect(selectedId){
+        if(!oNssCategorySelect){
+            return;
+        }
+        var cats=Array.isArray(window.__jfSiteCategories) ? window.__jfSiteCategories : [];
+        var html='<option value="">未分类（首页图标）</option>';
+        for(var i=0;i<cats.length;i++){
+            html+='<option value="'+cats[i].id+'">'+String(cats[i].name||'').replace(/</g,'')+'</option>';
+        }
+        oNssCategorySelect.innerHTML=html;
+        oNssCategorySelect.value=selectedId ? String(selectedId) : '';
+    }
+    window.fillSiteCategorySelect=fillSiteCategorySelect;
+
+    function selectedSiteCategoryId(){
+        if(!oNssCategorySelect){
+            return '';
+        }
+        return String(oNssCategorySelect.value||'');
+    }
+
+    function postSiteCategory(fields, done){
+        var fd=new FormData();
+        for(var key in fields){
+            if(Object.prototype.hasOwnProperty.call(fields, key)){
+                fd.append(key, fields[key]);
+            }
+        }
+        var req=new XMLHttpRequest();
+        req.open('POST','/home/site/categories',true);
+        req.onreadystatechange=function(){
+            if(req.readyState!==4){
+                return;
+            }
+            var data={};
+            try{ data=JSON.parse(req.response||'{}'); }catch(e){}
+            done(req.status, data);
+        };
+        req.send(fd);
+    }
+
+    function refreshSiteCategories(done){
+        postSiteCategory({action:'list'}, function(status, data){
+            if(status===200 && Array.isArray(data.categories)){
+                window.__jfSiteCategories=data.categories;
+                fillSiteCategorySelect(selectedSiteCategoryId());
+            }
+            if(done){
+                done(status, data);
+            }
+        });
+    }
+
+    function manageSiteCategories(){
+        if(!(userData && Number(userData.user_type)===1)){
+            showmsg('登录后可管理个人分类');
+            return;
+        }
+        var action=window.prompt('输入：新建 / 重命名 / 删除','新建');
+        if(action==null){
+            return;
+        }
+        action=String(action).trim();
+        if(action==='新建' || action==='创建' || action==='add'){
+            var name=window.prompt('新分类名称','');
+            if(name==null || !String(name).trim()){
+                return;
+            }
+            postSiteCategory({action:'create', name:String(name).trim()}, function(status, data){
+                if(data.error){
+                    showmsg(data.error);
+                    return;
+                }
+                showmsg('已创建分类');
+                refreshSiteCategories();
+            });
+            return;
+        }
+        refreshSiteCategories(function(){
+            var cats=Array.isArray(window.__jfSiteCategories) ? window.__jfSiteCategories : [];
+            if(!cats.length){
+                showmsg('还没有个人分类');
+                return;
+            }
+            var lines=[];
+            for(var i=0;i<cats.length;i++){
+                lines.push((i+1)+'. '+cats[i].name);
+            }
+            var pick=window.prompt('选择分类编号：\n'+lines.join('\n'),'1');
+            if(pick==null){
+                return;
+            }
+            var index=Number.parseInt(pick,10)-1;
+            if(!(index>=0 && index<cats.length)){
+                showmsg('编号不正确');
+                return;
+            }
+            var cat=cats[index];
+            if(action==='重命名' || action==='改名' || action==='rename'){
+                var next=window.prompt('新名称', cat.name||'');
+                if(next==null || !String(next).trim()){
+                    return;
+                }
+                postSiteCategory({action:'update', id:cat.id, name:String(next).trim()}, function(status, data){
+                    if(data.error){
+                        showmsg(data.error);
+                        return;
+                    }
+                    showmsg('已重命名');
+                    refreshSiteCategories();
+                });
+                return;
+            }
+            if(action==='删除' || action==='delete'){
+                if(!window.confirm('删除分类「'+cat.name+'」后，其中的网址会回到未分类。确定删除？')){
+                    return;
+                }
+                postSiteCategory({action:'delete', id:cat.id}, function(status, data){
+                    if(data.error){
+                        showmsg(data.error);
+                        return;
+                    }
+                    showmsg('已删除分类');
+                    refreshSiteCategories();
+                });
+                return;
+            }
+            showmsg('请输入：新建 / 重命名 / 删除');
+        });
+    }
+
+    var manageSiteCatBtn=document.getElementById('manageSiteCat-btn');
+    if(manageSiteCatBtn){
+        manageSiteCatBtn.onclick=function(){
+            manageSiteCategories();
+        };
+    }
 
 	//添加网站--------------------------
 	function toAddSite(){
@@ -436,6 +726,7 @@ function site(){
             //oNssIconInput.value=null;
             oNssImg.src="/static/home/images/defaultsicon/null.png";
             oNssImg.icontype=1;
+            fillSiteCategorySelect('');
             rememberSiteDialog('', '');
             $('#siteSetBlackBg').fadeIn(300);
             $('#newSiteSetBox').animate({marginTop:"-150px"},300);
@@ -455,6 +746,7 @@ function site(){
                 fd.append("sort",maxSort);
                 fd.append("title", oNssNameInput.value);
                 fd.append("url", oNssUrlInput.value);
+                fd.append("category_id", selectedSiteCategoryId());
                 fd.append("icontype", oNssImg.icontype);
                 fd.append("icon", oNssImg.getAttribute("src"));
                 /* 把文件添加到表单里 */
@@ -468,7 +760,11 @@ function site(){
                         }
                         else if(JSON.parse(req.response)['success']){
                             showmsg(JSON.parse(req.response)['success']);
-                            addRightSite=JSON.parse(req.response);	
+                            addRightSite=JSON.parse(req.response);
+                            if(addRightSite.category_id){
+                                $('#siteSetBlackBg').fadeOut(300);
+                                return false;
+                            }
                             //在页面上写入新增的网站标签
                             var oSiteAs=document.createElement('a');
                             oSiteAs.className="site-wrap-a siteA siteAs";
@@ -586,6 +882,7 @@ function site(){
 					//oNssIconInput.value=this.parentNode.children[0].children[0].getAttribute("src");
 					oNssImg.src=this.parentNode.children[0].getAttribute("src");
 					oNssImg.icontype=1;
+					fillSiteCategorySelect('');
 					rememberSiteDialog(normalizeSiteUrl(oNssUrlInput.value), oNssNameInput.value);
 
 					$('#siteSetBlackBg').fadeIn(300);
@@ -604,6 +901,7 @@ function site(){
 						fd.append("sort",sort);
 						fd.append("title", oNssNameInput.value);
 						fd.append("url", oNssUrlInput.value);
+						fd.append("category_id", selectedSiteCategoryId());
 						fd.append("icontype", oNssImg.icontype);
 						fd.append("icon", oNssImg.getAttribute("src"));
 						/* 把文件添加到表单里 */
@@ -616,6 +914,19 @@ function site(){
 						    	}
 						    	else if(JSON.parse(req.response)['success']){							    	
 							    	var ajaxData=JSON.parse(req.response);
+                                    if(ajaxData.category_id){
+                                        for(var e=0;e<$(".siteAs").length;e++){
+                                            if($('.siteAs')[e].dataset.sort==sort){
+                                                $('.siteAs')[e].innerHTML='';
+                                                $('.siteAs')[e].style='';
+                                                $('.siteAs')[e].className='siteAsHide';
+                                                break;
+                                            }
+                                        }
+                                        $('#siteSetBlackBg').fadeOut(300);
+                                        showmsg('已移到分类');
+                                        return false;
+                                    }
                                     for(var e=0;e<$(".siteAs").length;e++){	                                        							
                                         if($('.siteAs')[e].dataset.sort==sort){                                            
                                             $('.siteAs')[e].href=ajaxData['url'];
