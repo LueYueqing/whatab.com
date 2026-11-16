@@ -42,11 +42,11 @@ export default function GuidePage() {
         </p>
       </Section>
 
-      <Section id="z6" title="分享壁纸或网址分类">
+      <Section id="z6" title="分享壁纸或主页">
         <p>
           首页右下角可快速生成<strong>壁纸分享</strong>链接；到
           <a href="/set-homepage/upload">上传壁纸</a>
-          （「分享壁纸」页签）管理壁纸分享。网址分类分享在
+          （「分享壁纸」页签）管理。分享默认主页图标请到
           <a href="/my-sites?tab=share">我的网址</a>
           。都需要先登录。
         </p>
@@ -56,9 +56,9 @@ export default function GuidePage() {
           链接后，壁纸设置里会出现「分享」，可轮播你上传的壁纸；「自选」仍只放对方自己的图。
         </p>
         <p>
-          分类分享：别人打开
-          <code>?cat=</code>
-          链接后，首页分类栏会出现临时分类，内容实时同步你的源；登录后可「另存为我的分类」。不会改对方壁纸。
+          分享主页：先在「我的网址」编辑默认主页，再创建分享链接。别人打开
+          <code>?nav=</code>
+          后，首页图标区会显示你当前的默认主页，并随你修改实时同步；不会改对方账号数据。
         </p>
       </Section>
 

@@ -23,12 +23,18 @@ function normalizeUrl(value) {
   return text;
 }
 
+function siteKey(site) {
+  return site.id != null ? `id-${site.id}` : `url-${normalizeUrl(site.url).toLowerCase()}`;
+}
+
 export default function EditHomeSites() {
   const [sites, setSites] = useState([]);
+  const [owned, setOwned] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [messageBad, setMessageBad] = useState(false);
+  const [modal, setModal] = useState(''); // '' | 'search' | 'manual'
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -50,6 +56,8 @@ export default function EditHomeSites() {
   async function loadSites() {
     const data = await postJson('/home/site/home', { action: 'list' });
     setSites(Array.isArray(data.sites) ? data.sites : []);
+    setOwned(Boolean(data.owned));
+    if (data.note) note(data.note);
   }
 
   useEffect(() => {
@@ -107,7 +115,9 @@ export default function EditHomeSites() {
         icon: payload.icon || DEFAULT_ICON,
       });
       setSites(Array.isArray(data.sites) ? data.sites : []);
-      note(data.success || '已加入默认主页');
+      setOwned(true);
+      note(data.success || '已加入你的默认主页');
+      setModal('');
     } catch (error) {
       note(error.message, true);
     } finally {
@@ -115,13 +125,21 @@ export default function EditHomeSites() {
     }
   }
 
-  async function removeSite(id) {
-    if (!window.confirm('从默认主页移除这个网址？')) return;
+  async function removeSite(site) {
+    const tip = owned
+      ? '从你的默认主页移除这个网址？系统导航不会被删。'
+      : '将先复制系统默认为你的个人主页，再移除这一项。系统导航不会被改。继续？';
+    if (!window.confirm(tip)) return;
     setBusy(true);
     note('');
     try {
-      const data = await postJson('/home/site/home', { action: 'remove', id });
+      const data = await postJson('/home/site/home', {
+        action: 'remove',
+        id: site.id,
+        url: site.url,
+      });
       setSites(Array.isArray(data.sites) ? data.sites : []);
+      setOwned(true);
       note(data.success || '已移除');
     } catch (error) {
       note(error.message, true);
@@ -149,8 +167,7 @@ export default function EditHomeSites() {
         note(data.error, true);
         return;
       }
-      if (data.title && !String(title || '').trim()) setTitle(data.title);
-      else if (data.title) setTitle((current) => current || data.title);
+      if (data.title) setTitle((current) => current || data.title);
       if (data.icon) setIcon(data.icon);
       note(data.success || '已采集网站信息');
     } catch (error) {
@@ -178,6 +195,20 @@ export default function EditHomeSites() {
     setIcon(DEFAULT_ICON);
   }
 
+  function openSearch() {
+    setQuery('');
+    setResults([]);
+    setSearchTotal(0);
+    setModal('search');
+  }
+
+  function openManual() {
+    setUrl('');
+    setTitle('');
+    setIcon(DEFAULT_ICON);
+    setModal('manual');
+  }
+
   if (!ready) {
     return <p className="edit-home-note">正在读取你的默认主页…</p>;
   }
@@ -190,10 +221,22 @@ export default function EditHomeSites() {
 
       <section className="edit-home-section">
         <h2>当前默认主页</h2>
-        <p className="edit-home-note">这里的网址会出现在首页图标区。至少保留一个。</p>
+        <p className="edit-home-note">
+          {owned
+            ? '这是你的个人默认主页，会出现在首页图标区。移除只影响你自己，不会改系统导航。'
+            : '当前是系统默认预览。增删后会复制成你的个人主页，系统导航不会被改。'}
+        </p>
+        <div className="edit-home-actions" style={{ marginBottom: 12 }}>
+          <button type="button" className="inner-btn primary" disabled={busy} onClick={openSearch}>
+            从系统搜索加入
+          </button>
+          <button type="button" className="inner-btn" disabled={busy} onClick={openManual}>
+            自行录入
+          </button>
+        </div>
         <div className="edit-home-list">
           {sites.map((site) => (
-            <div key={site.id} className="edit-home-item">
+            <div key={siteKey(site)} className="edit-home-item">
               <img src={site.icon || DEFAULT_ICON} alt="" />
               <div className="edit-home-item-main">
                 <strong>{site.title}</strong>
@@ -202,8 +245,8 @@ export default function EditHomeSites() {
               <button
                 type="button"
                 className="inner-btn danger"
-                disabled={busy || sites.length <= 1}
-                onClick={() => removeSite(site.id)}
+                disabled={busy || (owned && sites.length <= 1)}
+                onClick={() => removeSite(site)}
               >
                 移除
               </button>
@@ -213,91 +256,109 @@ export default function EditHomeSites() {
         </div>
       </section>
 
-      <section className="edit-home-section">
-        <h2>从系统搜索加入</h2>
-        <form className="edit-home-form" onSubmit={search}>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="搜索网站名、网址或关键词"
-          />
-          <button className="inner-btn primary" type="submit" disabled={searching || busy}>
-            {searching ? '搜索中…' : '搜索'}
-          </button>
-        </form>
-        {searchTotal ? (
-          <p className="edit-home-note">找到 {searchTotal} 个，显示前 {results.length} 个</p>
-        ) : null}
-        <div className="edit-home-list">
-          {results.map((item) => {
-            const already = sites.some(
-              (site) => normalizeUrl(site.url).toLowerCase() === normalizeUrl(item.url).toLowerCase(),
-            );
-            return (
-              <div key={`${item.id}-${item.url}`} className="edit-home-item">
-                <img src={item.icon || DEFAULT_ICON} alt="" />
-                <div className="edit-home-item-main">
-                  <strong>{item.title}</strong>
-                  <a href={item.url} target="_blank" rel="noreferrer">{item.url}</a>
-                </div>
-                <button
-                  type="button"
-                  className="inner-btn primary"
-                  disabled={busy || already}
-                  onClick={() => addSite(item)}
-                >
-                  {already ? '已加入' : '加入'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      {modal ? (
+        <div className="edit-home-modal-layer" onClick={() => setModal('')}>
+          <div
+            className="edit-home-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="edit-home-modal-head">
+              <strong>{modal === 'search' ? '从系统搜索加入' : '自行录入'}</strong>
+              <button type="button" className="inner-btn" onClick={() => setModal('')}>关闭</button>
+            </div>
 
-      <section className="edit-home-section">
-        <h2>自行录入</h2>
-        <p className="edit-home-note">输入网址后会自动采集名称和图标，也可再改。</p>
-        <form className="edit-home-manual" onSubmit={submitManual}>
-          <label>
-            网址
-            <input
-              value={url}
-              onChange={(event) => {
-                setUrl(event.target.value);
-                scheduleCollect(event.target.value);
-              }}
-              onBlur={() => scheduleCollect(url)}
-              placeholder="https://example.com"
-              required
-            />
-          </label>
-          <label>
-            名称
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder={collecting ? '采集中…' : '网站名称'}
-            />
-          </label>
-          <div className="edit-home-icon-row">
-            <img src={icon || DEFAULT_ICON} alt="" />
-            <span>{collecting ? '正在采集图标…' : '图标预览'}</span>
+            {modal === 'search' ? (
+              <>
+                <form className="edit-home-form" onSubmit={search}>
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="搜索网站名、网址或关键词"
+                    autoFocus
+                  />
+                  <button className="inner-btn primary" type="submit" disabled={searching || busy}>
+                    {searching ? '搜索中…' : '搜索'}
+                  </button>
+                </form>
+                {searchTotal ? (
+                  <p className="edit-home-note">找到 {searchTotal} 个，显示前 {results.length} 个</p>
+                ) : null}
+                <div className="edit-home-list">
+                  {results.map((item) => {
+                    const already = sites.some(
+                      (site) => normalizeUrl(site.url).toLowerCase() === normalizeUrl(item.url).toLowerCase(),
+                    );
+                    return (
+                      <div key={`${item.id}-${item.url}`} className="edit-home-item">
+                        <img src={item.icon || DEFAULT_ICON} alt="" />
+                        <div className="edit-home-item-main">
+                          <strong>{item.title}</strong>
+                          <a href={item.url} target="_blank" rel="noreferrer">{item.url}</a>
+                        </div>
+                        <button
+                          type="button"
+                          className="inner-btn primary"
+                          disabled={busy || already}
+                          onClick={() => addSite(item)}
+                        >
+                          {already ? '已加入' : '加入'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="edit-home-note">输入网址后会自动采集名称和图标，也可再改。</p>
+                <form className="edit-home-manual" onSubmit={submitManual}>
+                  <label>
+                    网址
+                    <input
+                      value={url}
+                      onChange={(event) => {
+                        setUrl(event.target.value);
+                        scheduleCollect(event.target.value);
+                      }}
+                      onBlur={() => scheduleCollect(url)}
+                      placeholder="https://example.com"
+                      required
+                      autoFocus
+                    />
+                  </label>
+                  <label>
+                    名称
+                    <input
+                      value={title}
+                      onChange={(event) => setTitle(event.target.value)}
+                      placeholder={collecting ? '采集中…' : '网站名称'}
+                    />
+                  </label>
+                  <div className="edit-home-icon-row">
+                    <img src={icon || DEFAULT_ICON} alt="" />
+                    <span>{collecting ? '正在采集图标…' : '图标预览'}</span>
+                  </div>
+                  <div className="edit-home-actions">
+                    <button className="inner-btn primary" type="submit" disabled={busy || collecting}>
+                      添加到默认主页
+                    </button>
+                    <button
+                      className="inner-btn"
+                      type="button"
+                      disabled={busy || collecting || !url.trim()}
+                      onClick={() => collectMeta(normalizeUrl(url))}
+                    >
+                      重新采集
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
-          <div className="edit-home-actions">
-            <button className="inner-btn primary" type="submit" disabled={busy || collecting}>
-              添加到默认主页
-            </button>
-            <button
-              className="inner-btn"
-              type="button"
-              disabled={busy || collecting || !url.trim()}
-              onClick={() => collectMeta(normalizeUrl(url))}
-            >
-              重新采集
-            </button>
-          </div>
-        </form>
-      </section>
+        </div>
+      ) : null}
     </div>
   );
 }

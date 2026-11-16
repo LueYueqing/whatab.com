@@ -273,7 +273,7 @@ function consolejs(uiData){
             box.style.cssText='position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
             var card=document.createElement('div');
             card.style.cssText='width:min(440px,calc(100% - 32px));background:#fff;color:#333;border-radius:12px;padding:20px;line-height:1.6;';
-            card.innerHTML='<div style="font-size:16px;margin-bottom:8px;">分享壁纸</div><p id="share-link-note" style="margin:0 0 8px;font-size:13px;color:#666;"></p><input id="share-link-input" readonly style="width:100%;box-sizing:border-box;margin:8px 0;padding:8px;border:1px solid #ddd;border-radius:8px;color:#333;"><p id="share-link-stat" style="margin:0 0 8px;font-size:13px;color:#666;"></p><div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;"><a id="share-manage-link" href="/set-homepage/upload?tab=share" style="margin-right:auto;color:#2c7bf6;">管理壁纸分享</a><a href="/my-sites?tab=share" style="color:#2c7bf6;">分类分享</a><button type="button" id="share-copy-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#2c7bf6;color:#fff;cursor:pointer;">复制链接</button><button type="button" id="share-close-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#f2f2f2;color:#333;cursor:pointer;">关闭</button></div>';
+            card.innerHTML='<div style="font-size:16px;margin-bottom:8px;">分享壁纸</div><p id="share-link-note" style="margin:0 0 8px;font-size:13px;color:#666;"></p><input id="share-link-input" readonly style="width:100%;box-sizing:border-box;margin:8px 0;padding:8px;border:1px solid #ddd;border-radius:8px;color:#333;"><p id="share-link-stat" style="margin:0 0 8px;font-size:13px;color:#666;"></p><div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;"><a id="share-manage-link" href="/set-homepage/upload?tab=share" style="margin-right:auto;color:#2c7bf6;">管理壁纸分享</a><a href="/my-sites?tab=share" style="color:#2c7bf6;">分享主页</a><button type="button" id="share-copy-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#2c7bf6;color:#fff;cursor:pointer;">复制链接</button><button type="button" id="share-close-btn" style="border:0;border-radius:100px;padding:8px 16px;background:#f2f2f2;color:#333;cursor:pointer;">关闭</button></div>';
             box.appendChild(card);
             document.body.appendChild(box);
             box.addEventListener('click', function(event){
@@ -298,8 +298,8 @@ function consolejs(uiData){
             };
         }
         document.getElementById('share-link-note').textContent=data.reused
-            ? '这是你正在使用的壁纸分享链接。要新建或停止，请打开「管理壁纸分享」；分享网址分类请到「分类分享」。'
-            : '已生成壁纸分享链接。别人打开后，壁纸库里会出现「分享」。若要分享网址分类，请打开「分类分享」。';
+            ? '这是你正在使用的壁纸分享链接。要新建或停止，请打开「管理壁纸分享」；分享默认主页请到「分享主页」。'
+            : '已生成壁纸分享链接。别人打开后，壁纸库里会出现「分享」。若要分享默认主页图标，请打开「分享主页」。';
         document.getElementById('share-link-input').value=data.url||'';
         document.getElementById('share-link-stat').textContent=data.open_count
             ? ('已打开 '+data.open_count+' 次'+(data.last_opened_at ? '，最近 '+data.last_opened_at : ''))
@@ -1103,43 +1103,75 @@ $('#console-title-box').click(function(){
     function updateCatShareToolbar(){
         var bar=document.getElementById('nav-site-toolbar');
         var btn=document.getElementById('nav-catshare-save');
-        if(!bar || !btn){
+        var leaveBtn=document.getElementById('nav-navshare-leave');
+        if(!bar){
             return;
         }
-        var show=navViewCategory==='catshare' && window.__jfCatShare;
-        bar.style.display=show ? 'block' : 'none';
-        if(!btn.dataset.bound){
-            btn.dataset.bound='1';
-            btn.onclick=function(){
-                if(!(window.__jfUser && Number(window.__jfUser.user_type)===1)){
-                    location.href='/wechat/login?next=/';
-                    return;
-                }
-                var defaultName='分享·'+((window.__jfCatShare && window.__jfCatShare.title) || '分类');
-                var name=window.prompt('另存为我的分类，可改名称', defaultName);
-                if(name==null){
-                    return;
-                }
-                var fd=new FormData();
-                fd.append('name', String(name).trim() || defaultName);
-                var req=new XMLHttpRequest();
-                req.open('POST','/home/catshare/save',true);
-                req.onreadystatechange=function(){
-                    if(req.readyState!==4){
+        var showCat=navViewCategory==='catshare' && window.__jfCatShare;
+        var showNav=navViewCategory==='navshare' && window.__jfNavShare;
+        bar.style.display=(showCat || showNav) ? 'block' : 'none';
+        if(btn){
+            btn.style.display=showCat ? 'inline-block' : 'none';
+            if(!btn.dataset.bound){
+                btn.dataset.bound='1';
+                btn.onclick=function(){
+                    if(!(window.__jfUser && Number(window.__jfUser.user_type)===1)){
+                        location.href='/wechat/login?next=/';
                         return;
                     }
-                    var data={};
-                    try{ data=JSON.parse(req.response||'{}'); }catch(e){}
-                    if(req.status!==200 || data.error){
-                        setNavSiteStatus(data.error || '另存失败');
+                    var defaultName='分享·'+((window.__jfCatShare && window.__jfCatShare.title) || '分类');
+                    var name=window.prompt('另存为我的分类，可改名称', defaultName);
+                    if(name==null){
                         return;
                     }
-                    setNavSiteStatus('已另存为「'+(data.category && data.category.name ? data.category.name : '我的分类')+'」，拷贝了 '+(data.copied||0)+' 个网址');
-                    navCategoryList=[];
-                    openNavCategories();
+                    var fd=new FormData();
+                    fd.append('name', String(name).trim() || defaultName);
+                    var req=new XMLHttpRequest();
+                    req.open('POST','/home/catshare/save',true);
+                    req.onreadystatechange=function(){
+                        if(req.readyState!==4){
+                            return;
+                        }
+                        var data={};
+                        try{ data=JSON.parse(req.response||'{}'); }catch(e){}
+                        if(req.status!==200 || data.error){
+                            setNavSiteStatus(data.error || '另存失败');
+                            return;
+                        }
+                        setNavSiteStatus('已另存为「'+(data.category && data.category.name ? data.category.name : '我的分类')+'」，拷贝了 '+(data.copied||0)+' 个网址');
+                        navCategoryList=[];
+                        openNavCategories();
+                    };
+                    req.send(fd);
                 };
-                req.send(fd);
-            };
+            }
+        }
+        if(leaveBtn){
+            leaveBtn.style.display=showNav ? 'inline-block' : 'none';
+            if(!leaveBtn.dataset.bound){
+                leaveBtn.dataset.bound='1';
+                leaveBtn.onclick=function(){
+                    var req=new XMLHttpRequest();
+                    req.open('POST','/home/navshare/leave',true);
+                    req.onreadystatechange=function(){
+                        if(req.readyState!==4){
+                            return;
+                        }
+                        window.__jfNavShare=null;
+                        document.cookie='wa_nav_shared=;path=/;max-age=0';
+                        writeNavCategories(['default']);
+                        navCategoriesSelected=['default'];
+                        navViewCategory='default';
+                        setNavSiteStatus('已去掉分享主页');
+                        if(window.reloadNavSites){
+                            window.reloadNavSites();
+                        }
+                        navCategoryList=[];
+                        openNavCategories();
+                    };
+                    req.send();
+                };
+            }
         }
     }
 
@@ -1267,7 +1299,7 @@ $('#console-title-box').click(function(){
         navViewCategory=nextCategory;
         navCategoriesSelected=[navViewCategory];
         writeNavCategories(navCategoriesSelected);
-        if(navViewCategory!=='catshare'){
+        if(navViewCategory!=='catshare' && navViewCategory!=='navshare'){
             saveUserPref({nav_categories: JSON.stringify(navCategoriesSelected)});
         }
         renderNavCategoryList();
@@ -1292,7 +1324,7 @@ $('#console-title-box').click(function(){
 
     function syncNavCategorySelection(){
         var code=readNavCategories()[0]||'default';
-        if(code==='catshare' || /^u-/.test(code)){
+        if(code==='catshare' || code==='navshare' || /^u-/.test(code)){
             navCategoriesSelected=[code];
             navViewCategory=code;
             return false;

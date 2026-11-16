@@ -7,7 +7,7 @@ import ToolTabs from './ToolTabs';
 
 const TABS = [
   ['sites', '默认主页'],
-  ['share', '分类分享'],
+  ['share', '分享主页'],
 ];
 
 export default function MySitesHome() {

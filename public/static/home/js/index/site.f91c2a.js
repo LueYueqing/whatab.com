@@ -32,12 +32,21 @@ function site(){
         return match ? match[1].toLowerCase() : '';
     }
 
+    function navShareQueryToken(){
+        var match=location.search.match(/(?:^|[?&])nav=([a-f0-9]{32})(?:&|$)/i);
+        return match ? match[1].toLowerCase() : '';
+    }
+
     function shareFlagOn(){
         return /(?:^|;\s*)wa_shared=1(?:;|$)/.test(document.cookie);
     }
 
     function catShareFlagOn(){
         return /(?:^|;\s*)wa_cat_shared=1(?:;|$)/.test(document.cookie);
+    }
+
+    function navShareFlagOn(){
+        return /(?:^|;\s*)wa_nav_shared=1(?:;|$)/.test(document.cookie);
     }
 
     function clearLocalShare(){
@@ -51,6 +60,11 @@ function site(){
     function clearLocalCatShare(){
         window.__jfCatShare=null;
         document.cookie='wa_cat_shared=;path=/;max-age=0';
+    }
+
+    function clearLocalNavShare(){
+        window.__jfNavShare=null;
+        document.cookie='wa_nav_shared=;path=/;max-age=0';
     }
 
     function stripQueryParams(keys){
@@ -108,7 +122,7 @@ function site(){
         var actions=document.createElement('div');
         actions.style.cssText='display:flex;gap:12px;justify-content:flex-end;align-items:center;';
         var create=document.createElement('a');
-        create.href='/my-sites?tab=share';
+        create.href='/set-homepage/upload?tab=share';
         create.textContent='创建我的壁纸并分享';
         create.style.color='#2c7bf6';
         var ok=document.createElement('button');
@@ -150,6 +164,37 @@ function site(){
         document.body.appendChild(box);
     }
 
+    function showNavShareWelcome(name){
+        if(document.getElementById('navshare-welcome')){
+            return;
+        }
+        var box=document.createElement('div');
+        box.id='navshare-welcome';
+        box.style.cssText='position:fixed;inset:0;z-index:1300;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
+        var card=document.createElement('div');
+        card.style.cssText='width:min(460px,calc(100% - 32px));background:#fff;color:#333;border-radius:12px;padding:22px;line-height:1.7;';
+        var text=document.createElement('p');
+        text.style.margin='0 0 16px';
+        text.textContent='您打开了「'+(name||'微信用户')+'」分享的主页。首页图标区会显示对方当前的默认主页，并随对方修改实时同步；不会改动您自己的账号数据。';
+        var actions=document.createElement('div');
+        actions.style.cssText='display:flex;gap:12px;justify-content:flex-end;align-items:center;';
+        var mine=document.createElement('a');
+        mine.href='/my-sites?tab=share';
+        mine.textContent='分享我的主页';
+        mine.style.color='#2c7bf6';
+        var ok=document.createElement('button');
+        ok.type='button';
+        ok.textContent='知道了';
+        ok.style.cssText='border:0;border-radius:100px;padding:8px 16px;background:#2c7bf6;color:#fff;cursor:pointer;';
+        ok.onclick=function(){ box.remove(); };
+        actions.appendChild(mine);
+        actions.appendChild(ok);
+        card.appendChild(text);
+        card.appendChild(actions);
+        box.appendChild(card);
+        document.body.appendChild(box);
+    }
+
     window.showCatShareStopped=function(){
         clearLocalCatShare();
         if(document.getElementById('catshare-stopped')){
@@ -163,6 +208,27 @@ function site(){
         var text=document.createElement('p');
         text.style.margin='0';
         text.textContent='分享给您的网址分类已经取消';
+        card.appendChild(text);
+        box.appendChild(card);
+        document.body.appendChild(box);
+        setTimeout(function(){
+            location.replace('/');
+        },4000);
+    };
+
+    window.showNavShareStopped=function(){
+        clearLocalNavShare();
+        if(document.getElementById('navshare-stopped')){
+            return;
+        }
+        var box=document.createElement('div');
+        box.id='navshare-stopped';
+        box.style.cssText='position:fixed;inset:0;z-index:1300;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
+        var card=document.createElement('div');
+        card.style.cssText='width:min(420px,calc(100% - 32px));background:#fff;color:#333;border-radius:12px;padding:22px;line-height:1.7;';
+        var text=document.createElement('p');
+        text.style.margin='0';
+        text.textContent='分享给您的主页已经取消';
         card.appendChild(text);
         box.appendChild(card);
         document.body.appendChild(box);
@@ -303,6 +369,79 @@ function site(){
         req.send(fd);
     }
 
+    function prepareNavShare(done){
+        var token=navShareQueryToken();
+        if(!token && !navShareFlagOn()){
+            done();
+            return;
+        }
+        var fd=new FormData();
+        if(token){
+            fd.append('token', token);
+            fd.append('count', '1');
+        }
+        var req=new XMLHttpRequest();
+        req.open('POST','/home/navshare/visit',true);
+        req.onreadystatechange=function(){
+            if(req.readyState!==4){
+                return;
+            }
+            var data={};
+            try{ data=JSON.parse(req.response||'{}'); }catch(e){}
+            if(req.status===200 && token){
+                stripQueryParams(['nav']);
+            }
+            if(req.status!==200){
+                done();
+                return;
+            }
+            if(data.status==='stopped'){
+                window.showNavShareStopped();
+                done();
+                return;
+            }
+            if(data.status==='missing'){
+                clearLocalNavShare();
+                done();
+                return;
+            }
+            if(data.status==='active'){
+                if(Number(data.own)===1){
+                    clearLocalNavShare();
+                    done(false);
+                    return;
+                }
+                window.__jfNavShare={
+                    name: data.name||'微信用户',
+                    category: data.category||'navshare'
+                };
+                if(token){
+                    var seen='';
+                    try{ seen=localStorage.getItem('wa_nav_seen_'+token)||''; }catch(e){}
+                    if(!seen){
+                        try{ localStorage.setItem('wa_nav_seen_'+token,'1'); }catch(e){}
+                        showNavShareWelcome(data.name);
+                    }
+                    try{
+                        writeNavCategories([data.category||'navshare']);
+                    }catch(e){}
+                    done(true);
+                    return;
+                }
+                var current=(typeof readNavCategories==='function') ? readNavCategories() : [];
+                if(!current.length || current[0]==='default'){
+                    try{
+                        writeNavCategories([data.category||'navshare']);
+                    }catch(e){}
+                    done(true);
+                    return;
+                }
+            }
+            done(false);
+        };
+        req.send(fd);
+    }
+
     function dropForeignReady(){
         var id=userData && userData.id;
         if(!id){
@@ -326,15 +465,17 @@ function site(){
             return;
         }
         prepareShare(function(){
-            prepareCatShare(function(needReloadSites){
-                if(userData && Number(userData['user_type'])===1){
-                    dropForeignReady();
-                }
-                if(needReloadSites){
-                    clogin(false);
-                    return;
-                }
-                toWriteSite(false);
+            prepareCatShare(function(needReloadCat){
+                prepareNavShare(function(needReloadNav){
+                    if(userData && Number(userData['user_type'])===1){
+                        dropForeignReady();
+                    }
+                    if(needReloadCat || needReloadNav){
+                        clogin(false);
+                        return;
+                    }
+                    toWriteSite(false);
+                });
             });
         });
     }
@@ -385,7 +526,7 @@ function site(){
                             var serverNav=userData['nav_categories']||[];
                             if(!localNav.length){
                                 writeNavCategories(serverNav.length ? serverNav : ['default']);
-                            }else if(!serverNav.length && localNav[0] && localNav[0]!=='default' && localNav[0]!=='catshare' && String(localNav[0]).indexOf('u-')!==0){
+                            }else if(!serverNav.length && localNav[0] && localNav[0]!=='default' && localNav[0]!=='catshare' && localNav[0]!=='navshare' && String(localNav[0]).indexOf('u-')!==0){
                                 writeNavCategories(['default']);
                             }
                         }
@@ -447,7 +588,9 @@ function site(){
                     document.cookie='loadingbg=;max-age=0';
                     document.cookie='wa_shared=;path=/;max-age=0';
                     document.cookie='wa_cat_shared=;path=/;max-age=0';
+                    document.cookie='wa_nav_shared=;path=/;max-age=0';
                     window.__jfCatShare=null;
+                    window.__jfNavShare=null;
                 }
             }
         }

@@ -28,12 +28,20 @@ import {
   deleteUserSiteCategory,
   editUserSite,
   ensureUserHomeSites,
+  listUserHomeSites,
   listUserSiteCategories,
   listUserSites,
   resetUserSites,
   sortUserSites,
   updateUserSiteCategory,
 } from '../../../lib/user-sites';
+import {
+  clearHomeShareCookies,
+  handleHomeShare,
+  homeShareFromRequest,
+  listSharedHomeSites,
+  NAVSHARE_CODE,
+} from '../../../lib/home-shares';
 import { isLibraryWallpaperUrl, isUserBackgroundUrl } from '../../../lib/oss';
 import {
   destroySession,
@@ -194,6 +202,11 @@ function safeCategory(value) {
 
 async function homepageSiteData(user, categories, request = null) {
   const selected = readCategoryList(categories);
+  if (selected[0] === NAVSHARE_CODE && request) {
+    const navShare = await homeShareFromRequest(request).catch(() => null);
+    if (!navShare || navShare.stopped) return [];
+    return listSharedHomeSites(navShare, 18);
+  }
   if (selected.length) {
     const code = selected[0];
     if (code === CATSHARE_CODE && request) {
@@ -267,6 +280,15 @@ async function listNavCategoriesForHome(request, user) {
   await seedDefaultHomeSitesIfEmpty().catch(() => {});
   const rows = await listNavCategories();
   const out = [];
+  const navShare = await homeShareFromRequest(request).catch(() => null);
+  if (navShare && !navShare.stopped) {
+    out.push({
+      category: NAVSHARE_CODE,
+      category_note: `分享主页·${navShare.nickname || '微信用户'}`,
+      total: 0,
+      shared: 1,
+    });
+  }
   const share = await categoryShareFromRequest(request).catch(() => null);
   if (share && !share.stopped) {
     out.push({
@@ -295,6 +317,12 @@ async function listNavCategoriesForHome(request, user) {
 async function listNavSitesForHome(request, user, category, offset) {
   const safe = safeCategory(category);
   if (!safe) return [];
+  if (safe === NAVSHARE_CODE) {
+    const share = await homeShareFromRequest(request);
+    if (!share || share.stopped) return [];
+    if (offset > 0) return [];
+    return listSharedHomeSites(share, 40);
+  }
   if (safe === CATSHARE_CODE) {
     const share = await categoryShareFromRequest(request);
     if (!share || share.stopped) return [];
@@ -707,6 +735,11 @@ async function handle(request, context) {
   if (key.startsWith('/home/catshare/')) {
     return handleCategoryShare(request, key.slice('/home/catshare/'.length), user);
   }
+  if (key.startsWith('/home/navshare/')) {
+    const action = key.slice('/home/navshare/'.length);
+    const fallback = user ? await defaultHomeFallback(user) : [];
+    return handleHomeShare(request, action, user, fallback);
+  }
   const data = userPayload(payload(), user);
 
   if (key === '/home/user/clogin' || key === '/home/user/login') {
@@ -727,6 +760,7 @@ async function handle(request, context) {
     response.cookies.set('wa_session', '', { path: '/', maxAge: 0 });
     clearShareCookies(response);
     clearCategoryShareCookies(response);
+    clearHomeShareCookies(response);
     return response;
   }
   if (key === '/home/user/prefs') {
@@ -806,11 +840,29 @@ async function handle(request, context) {
     const fallback = await defaultHomeFallback(user);
     try {
       if (action === 'list') {
-        return NextResponse.json({ sites: await ensureUserHomeSites(user.id, fallback) });
+        const personal = await listUserHomeSites(user.id);
+        if (personal.length) {
+          return NextResponse.json({ sites: personal, owned: true });
+        }
+        // 未改过：只预览系统默认，不写库
+        const preview = (Array.isArray(fallback) ? fallback : []).map((item, index) => ({
+          id: null,
+          sort: index,
+          title: item.title,
+          url: item.url,
+          icon: item.icon || item.icon_url || '',
+          preview: true,
+        }));
+        return NextResponse.json({
+          sites: preview,
+          owned: false,
+          note: '当前是系统默认预览；增删后会复制成你的个人主页，不会改系统导航。',
+        });
       }
       if (action === 'add') {
+        await ensureUserHomeSites(user.id, fallback);
         const nextUrl = cleanSiteUrl(fields.url);
-        const current = await listUserSites(user.id, { uncategorizedOnly: true });
+        const current = await listUserHomeSites(user.id);
         if (nextUrl && current.some((item) => cleanSiteUrl(item.url) === nextUrl)) {
           return NextResponse.json({ error: '这个网址已经在默认主页里了' });
         }
@@ -822,15 +874,26 @@ async function handle(request, context) {
         }, null, fallback);
         return NextResponse.json({
           ...saved,
-          sites: await listUserSites(user.id, { uncategorizedOnly: true }),
+          owned: true,
+          sites: await listUserHomeSites(user.id),
         });
       }
       if (action === 'remove') {
-        const removed = await deleteUserSiteById(user.id, fields.id, fallback);
+        // 首次移除：先复制系统默认为个人副本，再删个人记录（绝不碰 nav_sites）
+        await ensureUserHomeSites(user.id, fallback);
+        let siteId = Number(fields.id);
+        if (!siteId && fields.url) {
+          const current = await listUserHomeSites(user.id);
+          const target = cleanSiteUrl(fields.url);
+          const found = current.find((item) => cleanSiteUrl(item.url) === target);
+          siteId = found?.id;
+        }
+        const removed = await deleteUserSiteById(user.id, siteId, fallback);
         return NextResponse.json({
           ...removed,
-          success: '已从默认主页移除',
-          sites: await listUserSites(user.id, { uncategorizedOnly: true }),
+          owned: true,
+          success: '已从你的默认主页移除（系统导航不受影响）',
+          sites: await listUserHomeSites(user.id),
         });
       }
     } catch (error) {

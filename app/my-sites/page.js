@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = pageMeta({
   title: '我的网址 - 哇塔主页',
   description:
-    '管理默认主页图标：从系统搜索加入或自行录入；也可分享网址分类给别人。',
+    '管理默认主页图标：从系统搜索加入或自行录入；也可分享编辑后的默认主页给别人。',
   path: '/my-sites',
 });
 
@@ -18,7 +18,7 @@ function Shell({ children }) {
   return (
     <InnerShell
       title="我的网址"
-      lead="管理首页默认图标，或分享网址分类。壁纸相关请到上传壁纸页。"
+      lead="管理首页默认图标，或把编辑后的默认主页分享给别人。壁纸请到上传壁纸页。"
       current="/my-sites"
       variant="tool"
     >
@@ -130,6 +130,33 @@ function Shell({ children }) {
           font-size: 13px;
         }
         .edit-home-actions { margin-top: 4px; }
+        .edit-home-modal-layer {
+          position: fixed;
+          inset: 0;
+          z-index: 80;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          background: rgba(0,0,0,0.45);
+        }
+        .edit-home-modal {
+          width: min(640px, 100%);
+          max-height: min(80vh, 720px);
+          overflow: auto;
+          padding: 16px;
+          background: var(--inner-surface);
+          border: 1px solid var(--inner-line);
+          border-radius: 12px;
+          box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+        }
+        .edit-home-modal-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
         .share-panel { color: var(--inner-ink); }
         .share-note { color: var(--inner-muted); line-height: 1.7; }
         .share-message { color: var(--inner-ok); }
@@ -216,7 +243,7 @@ export default async function MySitesPage() {
     return (
       <Shell>
         <p className="edit-home-note">
-          登录后可管理默认主页图标，或分享网址分类给别人。
+          登录后可管理默认主页图标，或把编辑后的主页分享给别人。
         </p>
         <p>
           <a className="inner-btn primary" href="/wechat/login?next=/my-sites">微信登录</a>
