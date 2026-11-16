@@ -154,14 +154,14 @@ def main() -> int:
         print(f"统计失败（若刚部署请稍等）：{exc}", file=sys.stderr)
         return 1
 
-    print(f"待转存约 {stats.get('external')} / {stats.get('total')}")
+    print(f"待转存约 {stats.get('external')} / {stats.get('total')}", flush=True)
     after_id = 0
     migrated = skipped = failed = 0
-    for round_no in range(1, 501):
+    for round_no in range(1, 2001):
         result = mcp_call(
             token,
             "migrate_nav_icons",
-            {"limit": 40, "after_id": after_id},
+            {"limit": 20, "after_id": after_id},
         )
         migrated += int(result.get("migrated") or 0)
         skipped += int(result.get("skipped") or 0)
@@ -170,17 +170,20 @@ def main() -> int:
         print(
             f"#{round_no} scanned={result.get('scanned')} "
             f"migrated={result.get('migrated')} skipped={result.get('skipped')} "
-            f"failed={result.get('failed')} after_id={after_id}"
+            f"failed={result.get('failed')} after_id={after_id} "
+            f"累计成功={migrated}",
+            flush=True,
         )
         for item in result.get("errors") or []:
-            print(f"  fail id={item.get('id')}: {item.get('error')}")
+            print(f"  fail id={item.get('id')}: {item.get('error')}", flush=True)
         if result.get("done"):
             break
 
     after = mcp_call(token, "count_nav_icon_stats")
     print(
         f"完成：成功 {migrated}，跳过 {skipped}，失败 {failed}；"
-        f"剩余外链约 {after.get('external')}"
+        f"剩余外链约 {after.get('external')}",
+        flush=True,
     )
     return 0 if migrated or not failed else 1
 
