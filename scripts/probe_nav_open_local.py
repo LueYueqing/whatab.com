@@ -21,6 +21,8 @@ ROOT = Path(__file__).resolve().parent.parent
 TIMEOUT = int(os.environ.get("WA_OPEN_TIMEOUT", "8"))
 WORKERS = int(os.environ.get("WA_OPEN_WORKERS", "12"))
 BATCH = int(os.environ.get("WA_OPEN_BATCH", "80"))
+# 打不开/超时写入的秒数，避免后台看到空或 0
+FAIL_SECONDS = float(os.environ.get("WA_OPEN_FAIL_SECONDS", "60"))
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -178,11 +180,11 @@ def main() -> int:
                             probed += 1
                     else:
                         cur.execute(
-                            "UPDATE nav_sites SET is_deleted = 1, updated_at = NOW() WHERE id = %s",
-                            (site_id,),
+                            "UPDATE nav_sites SET open_seconds = %s, is_deleted = 1, updated_at = NOW() WHERE id = %s",
+                            (FAIL_SECONDS, site_id),
                         )
                         soft_deleted += 1
-                        print(f"软删 id={site_id} {detail}", flush=True)
+                        print(f"软删 id={site_id} {detail} open_seconds={FAIL_SECONDS}", flush=True)
 
                 print(
                     f"after_id={after_id} 累计测到={probed} 累计软删={soft_deleted} "
