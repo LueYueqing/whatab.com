@@ -664,6 +664,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                       <th>名称</th>
                       <th>代号</th>
                       <th>网址数</th>
+                      <th>启用数</th>
                       <th>操作</th>
                     </tr>
                   </thead>
@@ -700,6 +701,11 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                             />
                           </td>
                           <td>{item.total}</td>
+                          <td>
+                            <span className={Number(item.enabled || 0) < Number(item.total || 0) ? 'admin-status off' : 'admin-status on'}>
+                              {Number(item.enabled || 0)}
+                            </span>
+                          </td>
                           <td className="admin-actions">
                             <button
                               type="button"
