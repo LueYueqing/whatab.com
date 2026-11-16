@@ -30,6 +30,7 @@ const SYSTEM_CATEGORIES = [
   ['sports', '运动'],
   ['finance', '金融'],
   ['plugins', '出海插件'],
+  ['se-links', '搜索引擎外链'],
   ['others', '其他'],
 ];
 

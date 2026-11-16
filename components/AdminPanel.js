@@ -523,7 +523,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
               </div>
               {!loading && !categoryStats.length ? <p className="admin-note">还没有分类数据。</p> : null}
               <p className="admin-note" style={{ marginTop: 14 }}>
-                分类代号与首页导航栏一致。给网址勾选分类后，用户即可在首页分类里看到。如「出海插件」对应 <code>plugins</code>。
+                分类代号与首页导航栏一致。给网址勾选分类后，用户即可在首页分类里看到。如「出海插件」对应 <code>plugins</code>，「搜索引擎外链」对应 <code>se-links</code>。
               </p>
             </div>
           ) : null}
