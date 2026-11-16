@@ -371,7 +371,15 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
     if (value == null || value === '') return '暂无';
     const visits = Number(value);
     if (!Number.isFinite(visits) || visits < 0) return '暂无';
-    return visits.toLocaleString('zh-CN');
+    const compact = (amount, suffix) => {
+      const text = amount >= 100 || Number.isInteger(amount)
+        ? String(Math.round(amount))
+        : amount.toFixed(1).replace(/\.0$/, '');
+      return `${text}${suffix}`;
+    };
+    if (visits >= 1_000_000) return compact(visits / 1_000_000, 'M');
+    if (visits >= 1_000) return compact(visits / 1_000, 'K');
+    return String(Math.round(visits));
   }
 
   async function toggleSiteEnabled(site) {
