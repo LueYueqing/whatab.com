@@ -256,6 +256,11 @@ html:has(.admin-app) body {
   opacity: 0.72;
   background: #f7f8fa;
 }
+.admin-site.is-deleted {
+  opacity: 0.68;
+  background: #faf5f5;
+  border-color: #f0d0d0;
+}
 .admin-site-title {
   display: flex;
   flex-wrap: wrap;
@@ -285,6 +290,13 @@ html:has(.admin-app) body {
 .admin-status.off {
   color: var(--admin-danger);
   background: #fdecec;
+}
+.admin-status.deleted {
+  color: #7a2e2e;
+  background: #f3dede;
+}
+.admin-open-seconds {
+  font-variant-numeric: tabular-nums;
 }
 .admin-site > div > span,
 .admin-url {

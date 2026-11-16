@@ -56,6 +56,7 @@ import {
   parsePersonalNavCode,
   personalNavCode,
 } from '../../../lib/category-shares';
+import { ensureNavSiteExtras, navSiteNotDeletedSql } from '../../../lib/admin';
 import {
   DEFAULT_HOME_CATEGORY,
   listNavCategoryRegistry,
@@ -112,12 +113,14 @@ function navCategoryNote(category, note, notes = {}) {
 }
 
 async function listNavSites(userId = 0, categories = []) {
+  await ensureNavSiteExtras().catch(() => {});
   const pool = getPool();
   const selected = readCategoryList(categories);
   const isDefaultHome = selected.length === 1 && selected[0] === DEFAULT_HOME_CATEGORY;
   const orderBy = selected.length && !isDefaultHome
     ? 'popularity DESC, sort_order ASC, id ASC'
     : 'sort_order ASC, id ASC';
+  const alive = `AND ${navSiteNotDeletedSql()}`;
   const sql = selected.length
     ? `SELECT title, keyword, url, description, logo, icon_url, img_name,
               category, category_note, source, country, popularity, is_pinned,
@@ -127,6 +130,7 @@ async function listNavSites(userId = 0, categories = []) {
        FROM nav_sites
        WHERE (user_id = ? OR user_id IS NULL)
          AND is_enabled = 1
+         ${alive}
          AND JSON_OVERLAPS(category, CAST(? AS JSON))
        ORDER BY ${orderBy}
        LIMIT 18`
@@ -137,6 +141,7 @@ async function listNavSites(userId = 0, categories = []) {
               DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
        FROM nav_sites
        WHERE (user_id = ? OR user_id IS NULL) AND is_enabled = 1
+         ${alive}
        ORDER BY sort_order ASC, id ASC
        LIMIT 18`;
   const params = selected.length ? [userId, JSON.stringify(selected)] : [userId];
@@ -349,6 +354,7 @@ async function readFields(request) {
 }
 
 async function listNavCategorySites(category, offset, limit = 30) {
+  await ensureNavSiteExtras().catch(() => {});
   const safe = safeCategory(category);
   const start = Math.max(0, Number.parseInt(offset, 10) || 0);
   const size = Math.min(60, Math.max(1, Number.parseInt(limit, 10) || 30));
@@ -359,6 +365,7 @@ async function listNavCategorySites(category, offset, limit = 30) {
      FROM nav_sites
      WHERE (user_id = 0 OR user_id IS NULL)
        AND is_enabled = 1
+       AND ${navSiteNotDeletedSql()}
        AND JSON_CONTAINS(category, JSON_QUOTE(?))
      ORDER BY popularity DESC, id ASC
      LIMIT ? OFFSET ?`,
@@ -372,6 +379,7 @@ async function listNavCategorySites(category, offset, limit = 30) {
 }
 
 async function listNavCategories() {
+  await ensureNavSiteExtras().catch(() => {});
   const pool = getPool();
   const registry = await listNavCategoryRegistry().catch(() => []);
   const notes = Object.fromEntries(registry.map((item) => [item.category, item.category_note]));
@@ -389,6 +397,8 @@ async function listNavCategories() {
        ord FOR ORDINALITY,
        category_note VARCHAR(64) PATH '$'
      )) note ON note.ord = cat.ord
+     WHERE ${navSiteNotDeletedSql('n')}
+       AND (n.is_enabled = 1 OR n.is_enabled IS NULL)
      GROUP BY cat.category`,
   );
   return rows
