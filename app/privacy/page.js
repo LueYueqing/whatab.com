@@ -1,4 +1,4 @@
-import LegacyPage from '../../components/LegacyPage';
+import InnerShell from '../../components/InnerShell';
 import { pageMeta } from '../../lib/seo';
 
 export const metadata = pageMeta({
@@ -8,5 +8,49 @@ export const metadata = pageMeta({
 });
 
 export default function PrivacyPage() {
-  return <LegacyPage file="privacy/index.html" self="/privacy" header />;
+  return (
+    <InnerShell
+      title="隐私政策"
+      lead="本政策适用于哇塔主页（https://whatab.com/）。运营者是东莞市梦霓科技有限公司，联系邮箱 87371@qq.com。"
+      current="/privacy"
+      variant="prose"
+    >
+      <p>我们只为提供网址导航、登录、壁纸上传与分享、会员服务而处理必要的个人信息。</p>
+
+      <h2>我们收集的信息</h2>
+      <p>你使用微信登录时，我们保存微信返回的 openid、昵称和头像，用来识别账号。</p>
+      <p>
+        你保存的主页设置会记在账号下，包括壁纸地址、壁纸分类、界面设置、导航分类，以及你添加或改过的网址和图标。
+      </p>
+      <p>
+        你上传的壁纸保存在对象存储中，用于你自己的「自选」壁纸。你创建分享链接后，打开者会在「分享」里看到这些图片，登录用户也一样，他们也可以自己去掉；你停止分享后，新的打开者不再使用它们。重新启用后，原来的链接会继续有效。
+      </p>
+      <p>
+        你购买会员时，我们保存订单号、支付渠道、金额和支付时间。付款由微信或支付宝完成，我们不保存银行卡号和支付密码。
+      </p>
+      <p>
+        登录状态使用名为 wa_session 的 Cookie。服务器日志可能包含 IP 地址和浏览器类型，用于排查故障和安全问题。
+      </p>
+
+      <h2>我们如何使用</h2>
+      <p>
+        这些信息用于维持登录、同步你的网址导航和壁纸设置、展示你上传的壁纸、向打开分享链接的人展示你选择分享的壁纸，以及确认会员是否在有效期内。我们不会出售个人信息。
+      </p>
+      <p>
+        除法律法规要求、你主动要求的服务，或完成合并、分立、收购所必需的转移外，我们不会把个人信息提供给其他公司。
+      </p>
+
+      <h2>保存与你的权利</h2>
+      <p>
+        账号信息在账号存续期间保存。你可以发邮件到
+        {' '}
+        <a href="mailto:87371@qq.com">87371@qq.com</a>
+        ，要求查阅、更正或删除个人信息，并请在邮件里写明微信昵称和要处理的事项。
+      </p>
+      <p>未满 18 周岁的用户，请在监护人同意后使用登录、上传和支付功能。</p>
+      <p>
+        本政策的解释和争议处理适用中华人民共和国法律，并可由东莞市有管辖权的人民法院处理。
+      </p>
+    </InnerShell>
+  );
 }

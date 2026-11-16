@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
+import InnerShell from '../../components/InnerShell';
 import McpSetup from '../../components/McpSetup';
-import SiteFooter from '../../components/SiteFooter';
-import SiteHeader from '../../components/SiteHeader';
 import { findUserBySession } from '../../lib/users';
 
 export const dynamic = 'force-dynamic';
@@ -12,38 +11,46 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-function Frame({ children }) {
+function Shell({ children }) {
   return (
-    <>
-      <link rel="stylesheet" href="/common/base.a83ad4.css" />
+    <InnerShell
+      title="MCP 接入"
+      lead="用密钥把哇塔主页接到 Cursor 等 MCP 客户端，管理个人网址、分类与自选壁纸。"
+      current="/mcp"
+      variant="tool"
+    >
       <style>{`
-        .mcp-setup { color: #333; max-width: 720px; }
-        .mcp-lead { line-height: 1.75; color: #555; margin: 0 0 20px; }
+        .mcp-setup { color: var(--inner-ink); }
+        .mcp-lead { line-height: 1.75; color: var(--inner-muted); margin: 0 0 20px; }
         .mcp-card {
           margin: 0 0 22px;
           padding: 18px 0 4px;
-          border-top: 1px solid #e6e6e6;
+          border-top: 1px solid var(--inner-line);
         }
+        .mcp-card:first-child { border-top: 0; padding-top: 0; }
         .mcp-card h2 {
-          font-size: 18px;
+          font-size: 1.05rem;
           margin: 0 0 10px;
           font-weight: 600;
+          border: 0;
+          padding: 0;
         }
-        .mcp-card p, .mcp-card li { line-height: 1.7; color: #555; }
+        .mcp-card p, .mcp-card li { line-height: 1.7; color: var(--inner-muted); }
         .mcp-card ul { padding-left: 1.2em; margin: 8px 0 0; }
-        .mcp-meta { font-size: 13px; color: #777; }
+        .mcp-meta { font-size: 13px; color: var(--inner-muted); }
         .mcp-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
         .mcp-btn {
-          border: 0;
-          border-radius: 100px;
-          padding: 8px 16px;
-          background: #fff;
-          color: #333;
+          border: 1px solid var(--inner-line);
+          border-radius: 8px;
+          padding: 8px 14px;
+          background: var(--inner-surface);
+          color: var(--inner-ink);
           cursor: pointer;
-          box-shadow: inset 0 0 0 1px #d0d5dd;
+          font: inherit;
+          font-size: 13px;
         }
-        .mcp-btn.primary { background: #2c7bf6; color: #fff; box-shadow: none; }
-        .mcp-btn.danger { color: #b42318; }
+        .mcp-btn.primary { background: var(--inner-accent); border-color: var(--inner-accent); color: #fff; }
+        .mcp-btn.danger { color: var(--inner-danger); border-color: #f0c4c0; }
         .mcp-btn:disabled { opacity: 0.45; cursor: default; }
         .mcp-token-box {
           display: flex;
@@ -52,7 +59,8 @@ function Frame({ children }) {
           flex-wrap: wrap;
           margin: 12px 0;
           padding: 12px;
-          background: #f7f8fa;
+          background: #eef1f4;
+          border: 1px solid var(--inner-line);
           border-radius: 10px;
         }
         .mcp-token-box code, .mcp-code {
@@ -60,34 +68,24 @@ function Frame({ children }) {
           min-width: 200px;
           word-break: break-all;
           white-space: pre-wrap;
+          font-family: var(--inner-mono);
           font-size: 13px;
           line-height: 1.55;
-          color: #1f2937;
+          color: var(--inner-ink);
         }
         .mcp-code {
           display: block;
           margin: 12px 0;
           padding: 14px;
-          background: #f7f8fa;
+          background: #eef1f4;
+          border: 1px solid var(--inner-line);
           border-radius: 10px;
           overflow: auto;
         }
-        .mcp-message { color: #b42318; margin-top: 8px; }
+        .mcp-message { color: var(--inner-danger); margin-top: 8px; }
       `}</style>
-      <SiteHeader current="/mcp" />
-      <div id="grayDiv">
-        <div id="widthDiv">
-          <div className="textMain">
-            <div className="textDiv">
-              <h1 className="fontTitle1">MCP 接入</h1>
-              <br /><br /><br /><br />
-              {children}
-            </div>
-          </div>
-        </div>
-      </div>
-      <SiteFooter />
-    </>
+      {children}
+    </InnerShell>
   );
 }
 
@@ -101,19 +99,19 @@ export default async function McpPage() {
     failed = true;
   }
   if (failed) {
-    return <Frame><p>页面暂时打不开，请稍后再试。</p></Frame>;
+    return <Shell><p>页面暂时打不开，请稍后再试。</p></Shell>;
   }
   if (!user) {
     return (
-      <Frame>
+      <Shell>
         <p>请先微信登录后再生成 MCP 密钥。</p>
-        <p><a href="/wechat/login?next=/mcp">微信登录</a></p>
-      </Frame>
+        <p><a className="inner-btn primary" href="/wechat/login?next=/mcp">微信登录</a></p>
+      </Shell>
     );
   }
   return (
-    <Frame>
+    <Shell>
       <McpSetup userName={user.user_name} isAdmin={Boolean(user.is_admin)} />
-    </Frame>
+    </Shell>
   );
 }

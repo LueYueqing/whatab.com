@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import AdminPanel from '../../components/AdminPanel';
-import SiteFooter from '../../components/SiteFooter';
-import SiteHeader from '../../components/SiteHeader';
+import InnerShell from '../../components/InnerShell';
 import { findUserBySession } from '../../lib/users';
 
 export const dynamic = 'force-dynamic';
@@ -11,43 +10,54 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-function Frame({ children }) {
+function Shell({ children }) {
   return (
-    <>
-      <link rel="stylesheet" href="/common/base.a83ad4.css" />
+    <InnerShell
+      title="管理后台"
+      lead="管理全站导航网址与壁纸库。"
+      current="/admin"
+      variant="tool"
+    >
       <style>{`
-        .admin-panel { color: #333; }
-        .admin-note { color: #666; line-height: 1.7; }
-        .admin-message { color: #b42318; }
-        .admin-message.ok { color: #067647; }
-        .admin-tabs { display: flex; gap: 8px; margin: 8px 0 16px; }
+        .admin-panel { color: var(--inner-ink); }
+        .admin-note { color: var(--inner-muted); line-height: 1.7; }
+        .admin-message { color: var(--inner-danger); }
+        .admin-message.ok { color: var(--inner-ok); }
+        .admin-tabs { display: flex; gap: 8px; margin: 8px 0 16px; flex-wrap: wrap; }
         .admin-tab, .admin-btn {
-          border: 0;
-          border-radius: 100px;
-          padding: 8px 16px;
-          background: #fff;
-          color: #333;
+          border: 1px solid var(--inner-line);
+          border-radius: 8px;
+          padding: 8px 14px;
+          background: var(--inner-surface);
+          color: var(--inner-ink);
           cursor: pointer;
+          font: inherit;
+          font-size: 13px;
         }
-        .admin-tab.active, .admin-btn.primary { background: #2c7bf6; color: #fff; }
-        .admin-btn.danger { color: #b42318; }
+        .admin-tab.active, .admin-btn.primary {
+          background: var(--inner-accent);
+          border-color: var(--inner-accent);
+          color: #fff;
+        }
+        .admin-btn.danger { color: var(--inner-danger); border-color: #f0c4c0; }
         .admin-btn:disabled { opacity: 0.45; cursor: default; }
         .admin-form, .admin-search { margin: 12px 0 18px; }
         .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .admin-form label, .admin-search { display: block; color: #666; font-size: 13px; }
+        .admin-form label, .admin-search { display: block; color: var(--inner-muted); font-size: 13px; }
         .admin-form input, .admin-form textarea, .admin-form select, .admin-search input, .admin-search select, .admin-photo input, .admin-photo select {
           display: block;
           width: 100%;
           box-sizing: border-box;
           margin-top: 4px;
           padding: 8px 10px;
-          border: 1px solid #ddd;
+          border: 1px solid var(--inner-line);
           border-radius: 8px;
-          color: #333;
-          background: #fff;
+          color: var(--inner-ink);
+          background: var(--inner-surface);
+          font: inherit;
         }
         .admin-checks { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 12px 0; }
-        .admin-checks label, .admin-inline { display: flex; align-items: center; gap: 6px; color: #333; }
+        .admin-checks label, .admin-inline { display: flex; align-items: center; gap: 6px; color: var(--inner-ink); }
         .admin-checks input, .admin-inline input { width: auto; margin: 0; }
         .admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
         .admin-search { display: flex; gap: 8px; align-items: center; }
@@ -59,22 +69,23 @@ function Frame({ children }) {
           gap: 12px;
           align-items: center;
           padding: 10px;
-          background: #fff;
+          background: var(--inner-surface);
+          border: 1px solid var(--inner-line);
           border-radius: 10px;
         }
-        .admin-site img, .admin-icon-empty { width: 48px; height: 48px; object-fit: contain; background: #f3f3f3; border-radius: 8px; }
+        .admin-site img, .admin-icon-empty { width: 48px; height: 48px; object-fit: contain; background: #eef1f4; border-radius: 8px; }
         .admin-site strong { margin-right: 8px; }
-        .admin-site em { margin-right: 8px; color: #888; font-style: normal; font-size: 12px; }
-        .admin-site span, .admin-url { display: block; color: #666; word-break: break-all; }
+        .admin-site em { margin-right: 8px; color: var(--inner-muted); font-style: normal; font-size: 12px; }
+        .admin-site span, .admin-url { display: block; color: var(--inner-muted); word-break: break-all; }
         .admin-photos {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
           gap: 12px;
         }
-        .admin-photo { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: #fff; border-radius: 10px; }
+        .admin-photo { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--inner-surface); border: 1px solid var(--inner-line); border-radius: 10px; }
         .admin-photo img { width: 100%; height: 120px; object-fit: contain; background: #111; border-radius: 8px; }
-        .admin-pager { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 16px 0; color: #666; }
-        .admin-panel a { color: #2c7bf6; }
+        .admin-pager { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 16px 0; color: var(--inner-muted); }
+        .admin-panel a { color: var(--inner-accent); }
         .admin-modal {
           position: fixed;
           inset: 0;
@@ -91,32 +102,20 @@ function Frame({ children }) {
           overflow: auto;
           box-sizing: border-box;
           padding: 20px;
-          background: #fff;
+          background: var(--inner-surface);
           border-radius: 12px;
         }
-        .admin-dialog h2 { margin: 0 0 14px; font-size: 18px; color: #222; }
+        .admin-dialog h2 { margin: 0 0 14px; font-size: 18px; color: var(--inner-ink); border: 0; padding: 0; }
         .admin-icon-line { display: flex; gap: 8px; align-items: center; }
         .admin-icon-line input { flex: 1; }
         .admin-icon-line .admin-btn { flex: none; margin-top: 4px; }
-        .admin-icon-preview { width: 40px; height: 40px; object-fit: contain; background: #f3f3f3; border-radius: 8px; }
+        .admin-icon-preview { width: 40px; height: 40px; object-fit: contain; background: #eef1f4; border-radius: 8px; }
         @media (max-width: 720px) {
           .admin-grid, .admin-site { grid-template-columns: 1fr; }
         }
       `}</style>
-      <SiteHeader />
-      <div id="grayDiv">
-        <div id="widthDiv">
-          <div className="textMain">
-            <div className="textDiv">
-              <h1 className="fontTitle1">管理后台</h1>
-              <br /><br /><br /><br />
-              {children}
-            </div>
-          </div>
-        </div>
-      </div>
-      <SiteFooter />
-    </>
+      {children}
+    </InnerShell>
   );
 }
 
@@ -129,10 +128,15 @@ export default async function AdminPage() {
   } catch {
     failed = true;
   }
-  if (failed) return <Frame><p>管理页暂时打不开，请稍后再试。</p></Frame>;
+  if (failed) return <Shell><p>管理页暂时打不开，请稍后再试。</p></Shell>;
   if (!user) {
-    return <Frame><p>请先用管理员微信登录。<a href="/wechat/login?next=/admin">微信登录</a></p></Frame>;
+    return (
+      <Shell>
+        <p>请先用管理员微信登录。</p>
+        <p><a className="inner-btn primary" href="/wechat/login?next=/admin">微信登录</a></p>
+      </Shell>
+    );
   }
-  if (!user.is_admin) return <Frame><p>这个账号不是管理员。</p></Frame>;
-  return <Frame><AdminPanel name={user.user_name} /></Frame>;
+  if (!user.is_admin) return <Shell><p>这个账号不是管理员。</p></Shell>;
+  return <Shell><AdminPanel name={user.user_name} /></Shell>;
 }

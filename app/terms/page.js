@@ -1,4 +1,5 @@
-import LegacyPage from '../../components/LegacyPage';
+import InnerShell from '../../components/InnerShell';
+import TermsContent from '../../components/TermsContent';
 import { pageMeta } from '../../lib/seo';
 
 export const metadata = pageMeta({
@@ -8,5 +9,14 @@ export const metadata = pageMeta({
 });
 
 export default function TermsPage() {
-  return <LegacyPage file="contract/index.html" self="/terms" header />;
+  return (
+    <InnerShell
+      title="用户服务协议"
+      lead="使用哇塔主页服务前，请阅读并理解本协议。"
+      current="/terms"
+      variant="prose"
+    >
+      <TermsContent />
+    </InnerShell>
+  );
 }

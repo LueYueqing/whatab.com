@@ -1,5 +1,4 @@
-import SiteFooter from '../../../components/SiteFooter';
-import SiteHeader from '../../../components/SiteHeader';
+import InnerShell from '../../../components/InnerShell';
 import UploadBackgrounds from '../../../components/UploadBackgrounds';
 
 export const metadata = {
@@ -10,29 +9,34 @@ export const metadata = {
 
 export default function UploadPage() {
   return (
-    <>
-      <link rel="stylesheet" href="/common/base.a83ad4.css" />
+    <InnerShell
+      title="上传壁纸"
+      lead="登录后上传自己的壁纸。首页选择「自选」会轮播这些图片，也可以到分享主页把它们分享给别人。"
+      current="/set-homepage/upload"
+      variant="tool"
+    >
       <style>{`
-        .upload-panel { color: #333; line-height: 1.7; }
+        .upload-panel { color: var(--inner-ink); line-height: 1.7; }
         .upload-row { display: flex; align-items: center; gap: 16px; margin: 18px 0 8px; }
         .upload-btn {
           display: inline-block;
           padding: 8px 18px;
-          border-radius: 100px;
-          background: #fff;
-          color: #333;
+          border-radius: 8px;
+          background: var(--inner-surface);
+          border: 1px solid var(--inner-line);
+          color: var(--inner-ink);
           text-decoration: none;
           cursor: pointer;
-          border: 0;
         }
         .upload-btn.disabled, .upload-btn:disabled { opacity: 0.55; cursor: default; }
         .upload-submit {
           border: 0;
-          border-radius: 100px;
+          border-radius: 8px;
           padding: 8px 18px;
-          background: #2c7bf6;
+          background: var(--inner-accent);
           color: #fff;
           cursor: pointer;
+          font: inherit;
         }
         .upload-submit:disabled { opacity: 0.45; cursor: default; }
         .upload-progress {
@@ -40,12 +44,12 @@ export default function UploadPage() {
           height: 28px;
           margin-top: 12px;
           border-radius: 100px;
-          background: #eee;
+          background: #eef1f4;
           overflow: hidden;
         }
         .upload-progress-bar {
           height: 100%;
-          background: #2c7bf6;
+          background: var(--inner-accent);
           transition: width .2s;
         }
         .upload-progress span {
@@ -55,12 +59,18 @@ export default function UploadPage() {
           align-items: center;
           justify-content: center;
           font-size: 13px;
-          color: #333;
+          color: var(--inner-ink);
         }
         .upload-btn input { display: none; }
-        .upload-note, .upload-message { color: #666; font-size: 14px; }
-        .upload-message { color: #b42318; }
-        .vip-box { margin: 0 0 18px; padding: 14px 16px; background: #fff; border-radius: 10px; }
+        .upload-note, .upload-message { color: var(--inner-muted); font-size: 14px; }
+        .upload-message { color: var(--inner-danger); }
+        .vip-box {
+          margin: 0 0 18px;
+          padding: 14px 16px;
+          background: var(--inner-surface);
+          border: 1px solid var(--inner-line);
+          border-radius: 10px;
+        }
         .vip-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 10px; }
         .vip-qr { display: block; width: 220px; height: 220px; margin-top: 12px; background: #fff; }
         .upload-grid {
@@ -85,9 +95,7 @@ export default function UploadPage() {
           color: #888;
           font-size: 13px;
         }
-        .upload-card.is-broken::before {
-          content: '图片打不开';
-        }
+        .upload-card.is-broken::before { content: '图片打不开'; }
         .upload-card img {
           display: block;
           width: 100%;
@@ -168,7 +176,7 @@ export default function UploadPage() {
           align-items: center;
           gap: 8px;
         }
-        .crop-apply { background: #2c7bf6; color: #fff; }
+        .crop-apply { background: var(--inner-accent); color: #fff; }
         .crop-apply:disabled, .crop-delete:disabled { opacity: 0.45; cursor: default; }
         .crop-delete {
           display: flex;
@@ -199,7 +207,7 @@ export default function UploadPage() {
           justify-content: center;
           gap: 16px;
           margin-top: 18px;
-          color: #666;
+          color: var(--inner-muted);
           font-size: 14px;
         }
         .upload-card button {
@@ -213,19 +221,7 @@ export default function UploadPage() {
           cursor: pointer;
         }
       `}</style>
-      <SiteHeader current="/set-homepage/upload" />
-      <div id="grayDiv">
-        <div id="widthDiv">
-          <div className="textMain">
-            <div className="textDiv">
-              <h1 className="fontTitle1">上传壁纸</h1>
-              <br /><br /><br /><br />
-              <UploadBackgrounds />
-            </div>
-          </div>
-        </div>
-      </div>
-      <SiteFooter />
-    </>
+      <UploadBackgrounds />
+    </InnerShell>
   );
 }

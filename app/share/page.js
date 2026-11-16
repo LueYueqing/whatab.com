@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
+import InnerShell from '../../components/InnerShell';
 import ShareHome from '../../components/ShareHome';
-import SiteFooter from '../../components/SiteFooter';
-import SiteHeader from '../../components/SiteHeader';
 import { pageMeta } from '../../lib/seo';
 import { findUserBySession } from '../../lib/users';
 
@@ -14,54 +13,60 @@ export const metadata = pageMeta({
   path: '/share',
 });
 
-function Frame({ children }) {
+function Shell({ children }) {
   return (
-    <>
-      <link rel="stylesheet" href="/common/base.a83ad4.css" />
+    <InnerShell
+      title="分享我的主页"
+      lead="把你上传的壁纸通过链接分享出去，对方可在壁纸库的「分享」里预览和轮播。"
+      current="/share"
+      variant="tool"
+    >
       <style>{`
-        .share-panel { color: #333; }
-        .share-note { color: #666; line-height: 1.7; }
-        .share-message { color: #067647; }
-        .share-message.bad { color: #b42318; }
+        .share-panel { color: var(--inner-ink); }
+        .share-note { color: var(--inner-muted); line-height: 1.7; }
+        .share-message { color: var(--inner-ok); }
+        .share-message.bad { color: var(--inner-danger); }
         .share-btn {
-          border: 0;
-          border-radius: 100px;
-          padding: 8px 16px;
-          background: #fff;
-          color: #333;
+          border: 1px solid var(--inner-line);
+          border-radius: 8px;
+          padding: 8px 14px;
+          background: var(--inner-surface);
+          color: var(--inner-ink);
           cursor: pointer;
+          font: inherit;
+          font-size: 13px;
         }
-        .share-btn.primary { background: #2c7bf6; color: #fff; }
-        .share-btn.danger { color: #b42318; }
+        .share-btn.primary { background: var(--inner-accent); border-color: var(--inner-accent); color: #fff; }
+        .share-btn.danger { color: var(--inner-danger); border-color: #f0c4c0; }
         .share-btn:disabled { opacity: 0.45; cursor: default; }
         .share-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
-        .share-item { padding: 12px; background: #fff; border-radius: 10px; }
+        .share-item {
+          padding: 12px;
+          background: var(--inner-surface);
+          border: 1px solid var(--inner-line);
+          border-radius: 10px;
+        }
         .share-item input {
           display: block;
           width: 100%;
           box-sizing: border-box;
           padding: 8px 10px;
-          border: 1px solid #ddd;
+          border: 1px solid var(--inner-line);
           border-radius: 8px;
-          color: #333;
+          color: var(--inner-ink);
+          font: inherit;
         }
-        .share-meta, .share-actions { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 8px; color: #666; }
-        .share-panel a { color: #2c7bf6; }
+        .share-meta, .share-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px 14px;
+          margin-top: 8px;
+          color: var(--inner-muted);
+        }
+        .share-panel a { color: var(--inner-accent); }
       `}</style>
-      <SiteHeader current="/share" />
-      <div id="grayDiv">
-        <div id="widthDiv">
-          <div className="textMain">
-            <div className="textDiv">
-              <h1 className="fontTitle1">分享我的主页</h1>
-              <br /><br /><br /><br />
-              {children}
-            </div>
-          </div>
-        </div>
-      </div>
-      <SiteFooter />
-    </>
+      {children}
+    </InnerShell>
   );
 }
 
@@ -74,25 +79,25 @@ export default async function SharePage() {
   } catch {
     failed = true;
   }
-  if (failed) return <Frame><p>分享页暂时打不开，请稍后再试。</p></Frame>;
+  if (failed) return <Shell><p>分享页暂时打不开，请稍后再试。</p></Shell>;
   if (!user) {
     return (
-      <Frame>
+      <Shell>
         <div className="share-panel">
           <p className="share-note">
-            把你在<a href="/set-homepage/upload">上传壁纸</a>
+            把你在
+            <a href="/set-homepage/upload">上传壁纸</a>
             里存好的图片分享出去。别人打开你的分享链接后，壁纸库会出现「分享」，可以预览和轮播这些壁纸；已经登录的人也一样，他的「自选」仍然只放他自己的壁纸。
           </p>
           <p className="share-note">
             登录后可以创建、复制、停止或重新启用分享链接，并查看打开次数。
           </p>
           <p>
-            <a href="/wechat/login?next=/share">微信登录</a>
-            后再管理分享。
+            <a className="inner-btn primary" href="/wechat/login?next=/share">微信登录</a>
           </p>
         </div>
-      </Frame>
+      </Shell>
     );
   }
-  return <Frame><ShareHome /></Frame>;
+  return <Shell><ShareHome /></Shell>;
 }

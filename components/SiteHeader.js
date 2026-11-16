@@ -10,19 +10,23 @@ const LINKS = [
 
 export default function SiteHeader({ current }) {
   return (
-    <div id="headDiv">
-      <div id="headWidthDiv">
-        <a id="headLogo" href="/">
+    <header className="site-header">
+      <div className="site-header-inner">
+        <a className="site-logo" href="/">
           <img src="/static/home/images/logo_text.svg" alt="哇塔主页" />
         </a>
-        <ul>
+        <nav className="site-nav" aria-label="站点导航">
           {LINKS.map(([href, label]) => (
-            <a key={href} href={href} className={current === href ? 'nav-current' : undefined}>
+            <a
+              key={href}
+              href={href}
+              className={current === href ? 'is-current' : undefined}
+            >
               {label}
             </a>
           ))}
-        </ul>
+        </nav>
       </div>
-    </div>
+    </header>
   );
 }

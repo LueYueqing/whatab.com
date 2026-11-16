@@ -32,15 +32,28 @@ export default function LegacyPage({
   const showFrame = header && self !== '/';
   const body = showFrame ? withoutBlock(withoutBlock(doc.body, 'headDiv'), 'bottomDiv') : doc.body;
 
+  if (showFrame) {
+    return (
+      <>
+        <link rel="stylesheet" href="/common/inner.css" />
+        <div className="inner-shell">
+          <SiteHeader current={self} />
+          <main className="inner-main">
+            <div className="inner-prose" dangerouslySetInnerHTML={{ __html: body }} />
+          </main>
+          <SiteFooter />
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       {styles.map((href) => (
         <link key={href} rel="stylesheet" href={href} />
       ))}
       {doc.headCss ? <style dangerouslySetInnerHTML={{ __html: doc.headCss }} /> : null}
-      {showFrame ? <SiteHeader current={self} /> : null}
       <div id={id} dangerouslySetInnerHTML={{ __html: body }} />
-      {showFrame ? <SiteFooter /> : null}
     </>
   );
 }
