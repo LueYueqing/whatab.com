@@ -56,14 +56,20 @@ def ensure_columns(cur) -> None:
             "ALTER TABLE `nav_sites` ADD COLUMN `is_enabled` "
             "TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用'"
         )
-    # 存量软删迁成未启用（列可能仍在，但代码不再依赖）
+    # 一次性：软删→未启用；旧未启用且未软删→启用；再清 is_deleted
     cur.execute("SHOW COLUMNS FROM nav_sites LIKE 'is_deleted'")
     if cur.fetchone():
-        cur.execute(
-            "UPDATE nav_sites SET is_enabled = 0, updated_at = NOW() "
-            "WHERE is_deleted = 1 AND (is_enabled = 1 OR is_enabled IS NULL)"
-        )
-        cur.execute("UPDATE nav_sites SET is_deleted = 0 WHERE is_deleted = 1")
+        cur.execute("SELECT COUNT(*) FROM nav_sites WHERE is_deleted = 1")
+        if int(cur.fetchone()[0]) > 0:
+            cur.execute(
+                "UPDATE nav_sites SET is_enabled = 0, updated_at = NOW() "
+                "WHERE is_deleted = 1"
+            )
+            cur.execute(
+                "UPDATE nav_sites SET is_enabled = 1, updated_at = NOW() "
+                "WHERE (is_deleted = 0 OR is_deleted IS NULL) AND is_enabled = 0"
+            )
+            cur.execute("UPDATE nav_sites SET is_deleted = 0 WHERE is_deleted = 1")
 
 
 def measure_open(url: str) -> tuple[bool, float | None, str]:
