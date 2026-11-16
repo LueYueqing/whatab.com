@@ -22,6 +22,7 @@ function cropFrame(width, height, ratio) {
 function WallpaperCrop({ image, ratio, busy, error, hasPrev, hasNext, onPrev, onNext, onClose, onApply, onDelete }) {
   const [natural, setNatural] = useState(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [loadError, setLoadError] = useState(false);
   const drag = useRef(null);
   const frame = natural ? cropFrame(natural.width, natural.height, ratio) : null;
   const scale = natural
@@ -34,6 +35,7 @@ function WallpaperCrop({ image, ratio, busy, error, hasPrev, hasNext, onPrev, on
   useEffect(() => {
     setNatural(null);
     setOffset({ x: 0, y: 0 });
+    setLoadError(false);
     drag.current = null;
   }, [image.id, image.url]);
 
@@ -48,7 +50,12 @@ function WallpaperCrop({ image, ratio, busy, error, hasPrev, hasNext, onPrev, on
   function onLoad(event) {
     const width = event.currentTarget.naturalWidth;
     const height = event.currentTarget.naturalHeight;
+    if (!width || !height) {
+      setLoadError(true);
+      return;
+    }
     const next = cropFrame(width, height, ratio);
+    setLoadError(false);
     setNatural({ width, height });
     setOffset({
       x: next.axis === 'x' ? next.max / 2 : 0,
@@ -99,6 +106,10 @@ function WallpaperCrop({ image, ratio, busy, error, hasPrev, hasNext, onPrev, on
           alt=""
           draggable="false"
           onLoad={onLoad}
+          onError={() => {
+            setNatural(null);
+            setLoadError(true);
+          }}
           style={natural ? {
             width: natural.width * scale,
             height: natural.height * scale,
@@ -115,31 +126,32 @@ function WallpaperCrop({ image, ratio, busy, error, hasPrev, hasNext, onPrev, on
             onPointerUp={onPointerUp}
           />
         ) : null}
-        <button type="button" className="crop-nav prev" aria-label="上一张" disabled={!hasPrev || busy} onClick={onPrev}>‹</button>
-        <button type="button" className="crop-nav next" aria-label="下一张" disabled={!hasNext || busy} onClick={onNext}>›</button>
-        <button type="button" className="crop-close" onClick={onClose}>关闭</button>
-        <div className="crop-actions">
-          <button
-            type="button"
-            className="crop-apply"
-            disabled={busy || !frame}
-            onClick={() => onApply({
-              x: offset.x,
-              y: offset.y,
-              width: frame.width,
-              height: frame.height,
-            })}
-          >
-            {busy ? '裁剪中…' : '按 16:9 裁剪'}
-          </button>
-          <button type="button" className="crop-delete" aria-label="删除这张图片" disabled={busy} onClick={onDelete}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 12H7L6 9z" />
-            </svg>
-          </button>
-        </div>
-        {error ? <p className="crop-error">{error}</p> : null}
       </div>
+      <button type="button" className="crop-nav prev" aria-label="上一张" disabled={!hasPrev || busy} onClick={onPrev}>‹</button>
+      <button type="button" className="crop-nav next" aria-label="下一张" disabled={!hasNext || busy} onClick={onNext}>›</button>
+      <button type="button" className="crop-close" onClick={onClose}>关闭</button>
+      <div className="crop-actions">
+        <button
+          type="button"
+          className="crop-apply"
+          disabled={busy || !frame || loadError}
+          onClick={() => onApply({
+            x: offset.x,
+            y: offset.y,
+            width: frame.width,
+            height: frame.height,
+          })}
+        >
+          {busy ? '裁剪中…' : '按 16:9 裁剪'}
+        </button>
+        <button type="button" className="crop-delete" aria-label="删除这张图片" disabled={busy} onClick={onDelete}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 12H7L6 9z" />
+          </svg>
+        </button>
+      </div>
+      {loadError ? <p className="crop-error">图片加载失败，请关闭后重试，或删除后重新上传</p> : null}
+      {!loadError && error ? <p className="crop-error">{error}</p> : null}
     </div>
   );
 }
@@ -352,8 +364,14 @@ export default function UploadBackgrounds() {
         setCropError(data.error || '裁剪失败，请稍后再试');
         return;
       }
-      const nextUrl = data.url;
-      const nextThumb = data.thumb || nextUrl;
+      const stamp = Date.now();
+      const withStamp = (value) => {
+        const text = String(value || '');
+        if (!text) return text;
+        return `${text}${text.includes('?') ? '&' : '?'}v=${stamp}`;
+      };
+      const nextUrl = withStamp(data.url);
+      const nextThumb = withStamp(data.thumb || data.url);
       const imageId = viewer.image.id;
       setImages((list) => list.map((item) => (item.id === imageId ? { ...item, url: nextUrl, thumb: nextThumb } : item)));
       setViewer((current) => (current && current.image.id === imageId
@@ -534,7 +552,21 @@ export default function UploadBackgrounds() {
       <div className="upload-grid">
         {pageImages.map((image) => (
           <div className="upload-card" key={image.id} onClick={() => openCrop(image)}>
-            <img src={image.thumb || image.url} alt="" />
+            <img
+              src={image.thumb || image.url}
+              alt=""
+              onError={(event) => {
+                const node = event.currentTarget;
+                if (image.thumb && node.dataset.fallback !== '1' && image.url && node.src !== image.url) {
+                  node.dataset.fallback = '1';
+                  node.src = image.url;
+                  return;
+                }
+                node.style.display = 'none';
+                const card = node.closest('.upload-card');
+                if (card) card.classList.add('is-broken');
+              }}
+            />
             <button type="button" disabled={busy} onClick={(event) => { event.stopPropagation(); removeImage(image.id); }}>删除</button>
           </div>
         ))}

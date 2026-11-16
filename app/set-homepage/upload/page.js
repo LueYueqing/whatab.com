@@ -75,11 +75,26 @@ export default function UploadPage() {
           border-radius: 8px;
           background: #e7e7e7;
           overflow: hidden;
+          min-height: 120px;
+        }
+        .upload-card.is-broken {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 160px;
+          color: #888;
+          font-size: 13px;
+        }
+        .upload-card.is-broken::before {
+          content: '图片打不开';
         }
         .upload-card img {
           display: block;
           width: 100%;
           height: auto;
+          min-height: 120px;
+          object-fit: contain;
+          background: #e7e7e7;
           cursor: pointer;
         }
         .crop-layer {
@@ -127,8 +142,8 @@ export default function UploadPage() {
           line-height: 42px;
           cursor: pointer;
         }
-        .crop-nav.prev { left: 12px; }
-        .crop-nav.next { right: 12px; }
+        .crop-nav.prev { left: 16px; }
+        .crop-nav.next { right: 16px; }
         .crop-nav:disabled { opacity: 0.35; cursor: default; }
         .crop-close, .crop-apply {
           border: 0;
@@ -139,16 +154,16 @@ export default function UploadPage() {
         .crop-close {
           position: absolute;
           z-index: 4;
-          top: 12px;
-          left: 12px;
+          top: 16px;
+          left: 16px;
           background: rgba(255,255,255,0.92);
           color: #333;
         }
         .crop-actions {
           position: absolute;
           z-index: 4;
-          top: 12px;
-          right: 12px;
+          top: 16px;
+          right: 16px;
           display: flex;
           align-items: center;
           gap: 8px;
