@@ -63,6 +63,8 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
   const [draftQuery, setDraftQuery] = useState('');
   const [siteCategory, setSiteCategory] = useState(safeCategoryFromUrl);
   const [siteStatus, setSiteStatus] = useState('alive');
+  const [siteSortBy, setSiteSortBy] = useState('');
+  const [siteSortDir, setSiteSortDir] = useState('asc');
   const [navCategories, setNavCategories] = useState([]);
   const [categoryStats, setCategoryStats] = useState([]);
   const [categoryDrafts, setCategoryDrafts] = useState({});
@@ -131,7 +133,7 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
     let ignore = false;
     setLoading(true);
     const url = tab === 'sites'
-      ? `/home/admin/sites?offset=${siteOffset}&q=${encodeURIComponent(siteQuery)}&category=${encodeURIComponent(siteCategory)}&status=${encodeURIComponent(siteStatus)}`
+      ? `/home/admin/sites?offset=${siteOffset}&q=${encodeURIComponent(siteQuery)}&category=${encodeURIComponent(siteCategory)}&status=${encodeURIComponent(siteStatus)}&sort_by=${encodeURIComponent(siteSortBy)}&sort_dir=${encodeURIComponent(siteSortDir)}`
       : (tab === 'categories'
         ? '/home/admin/categories'
         : `/home/admin/wallpapers?offset=${wallpaperOffset}&category=${encodeURIComponent(wallpaperCategory)}`);
@@ -143,6 +145,8 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
         setSitePage(Number(data.page_size || 20));
         setNavCategories(data.categories || []);
         setFields(data.fields || {});
+        if (data.sort_by != null) setSiteSortBy(String(data.sort_by || ''));
+        if (data.sort_dir) setSiteSortDir(String(data.sort_dir) === 'desc' ? 'desc' : 'asc');
       } else if (tab === 'categories') {
         const categories = data.categories || [];
         setCategoryStats(categories);
@@ -175,7 +179,29 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
     return () => {
       ignore = true;
     };
-  }, [tab, siteOffset, siteQuery, siteCategory, siteStatus, wallpaperOffset, wallpaperCategory, revision]);
+  }, [tab, siteOffset, siteQuery, siteCategory, siteStatus, siteSortBy, siteSortDir, wallpaperOffset, wallpaperCategory, revision]);
+
+  function toggleSiteSort(column) {
+    if (!column) return;
+    setSiteOffset(0);
+    if (siteSortBy === column) {
+      setSiteSortDir((current) => (current === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSiteSortBy(column);
+    setSiteSortDir(column === 'monthly_visits' ? 'desc' : 'asc');
+  }
+
+  function siteSortLabel(column, label) {
+    if (siteSortBy !== column) return label;
+    return `${label}${siteSortDir === 'desc' ? ' ↓' : ' ↑'}`;
+  }
+
+  function siteCategoryText(site) {
+    return site.categories.map((item) => (
+      (navCategories.find((category) => category.category === item) || {}).category_note || item
+    )).join('、') || '未分类';
+  }
 
   function toggleCategory(category) {
     setForm((current) => ({
@@ -712,70 +738,98 @@ export default function AdminPanel({ name, section = 'sites', initialCategory = 
                 <button className="admin-btn" type="submit">搜索</button>
               </form>
               {loading ? <p className="admin-note">正在读取…</p> : null}
-              <div className="admin-list">
-                {sites.map((site) => (
-                  <article
-                    className={
-                      site.is_deleted
-                        ? 'admin-site is-deleted'
-                        : (site.is_enabled ? 'admin-site' : 'admin-site is-disabled')
-                    }
-                    key={site.id}
-                  >
-                    {site.icon ? <img src={site.icon} alt="" /> : <span className="admin-icon-empty" />}
-                    <div>
-                      <div className="admin-site-title">
-                        <strong>{site.title}</strong>
-                        <span className={
-                          site.is_deleted
-                            ? 'admin-status deleted'
-                            : (site.is_enabled ? 'admin-status on' : 'admin-status off')
-                        }
+              <div className="admin-table-wrap">
+                <table className="admin-table admin-sites-table">
+                  <thead>
+                    <tr>
+                      <th className="admin-col-icon">图标</th>
+                      <th>网站名称</th>
+                      <th>网址</th>
+                      <th>
+                        <button
+                          type="button"
+                          className={`admin-sort-btn${siteSortBy === 'open_seconds' ? ' is-active' : ''}`}
+                          onClick={() => toggleSiteSort('open_seconds')}
+                          disabled={fields.open_seconds === false}
                         >
-                          {site.is_deleted ? '已删除' : (site.is_enabled ? '已启用' : '未启用')}
-                        </span>
-                        {fields.open_seconds !== false ? (
-                          <em className="admin-open-seconds" title="打开耗时（秒），仅后台可见">
-                            打开 {formatOpenSeconds(site.open_seconds)}
-                          </em>
-                        ) : null}
-                        {fields.monthly_visits !== false ? (
-                          <em className="admin-monthly-visits" title="近一月访问量，后续接入数据源">
-                            月访 {formatMonthlyVisits(site.monthly_visits)}
-                          </em>
-                        ) : null}
-                        {site.user_id ? <em>用户 {site.user_id}</em> : null}
-                      </div>
-                      <a className="admin-url" href={site.url} target="_blank" rel="noreferrer">{site.url}</a>
-                      <span>{site.categories.map((item) => (
-                        (navCategories.find((category) => category.category === item) || {}).category_note || item
-                      )).join('、') || '未分类'}</span>
-                    </div>
-                    <div className="admin-actions">
-                      {site.is_deleted ? (
-                        <>
-                          <button className="admin-btn success" type="button" disabled={busy} onClick={() => restoreDeletedSite(site)}>恢复</button>
-                          <button className="admin-btn danger" type="button" disabled={busy} onClick={() => purgeSite(site)}>彻底删除</button>
-                        </>
-                      ) : (
-                        <>
-                          {fields.is_enabled !== false ? (
-                            <button
-                              className={`admin-btn ${site.is_enabled ? 'warn' : 'success'}`}
-                              type="button"
-                              disabled={busy}
-                              onClick={() => toggleSiteEnabled(site)}
+                          {siteSortLabel('open_seconds', '打开时间')}
+                        </button>
+                      </th>
+                      <th>分类</th>
+                      <th>
+                        <button
+                          type="button"
+                          className={`admin-sort-btn${siteSortBy === 'monthly_visits' ? ' is-active' : ''}`}
+                          onClick={() => toggleSiteSort('monthly_visits')}
+                          disabled={fields.monthly_visits === false}
+                        >
+                          {siteSortLabel('monthly_visits', '月访')}
+                        </button>
+                      </th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sites.map((site) => (
+                      <tr
+                        key={site.id}
+                        className={
+                          site.is_deleted
+                            ? 'is-deleted'
+                            : (site.is_enabled ? '' : 'is-disabled')
+                        }
+                      >
+                        <td className="admin-col-icon">
+                          {site.icon ? <img src={site.icon} alt="" /> : <span className="admin-icon-empty" />}
+                        </td>
+                        <td>
+                          <div className="admin-site-title">
+                            <strong>{site.title}</strong>
+                            <span className={
+                              site.is_deleted
+                                ? 'admin-status deleted'
+                                : (site.is_enabled ? 'admin-status on' : 'admin-status off')
+                            }
                             >
-                              {site.is_enabled ? '停用' : '启用'}
-                            </button>
-                          ) : null}
-                          <button className="admin-btn" type="button" onClick={() => openEditor(site)}>编辑</button>
-                          <button className="admin-btn danger" type="button" disabled={busy} onClick={() => removeSite(site)}>删除</button>
-                        </>
-                      )}
-                    </div>
-                  </article>
-                ))}
+                              {site.is_deleted ? '已删除' : (site.is_enabled ? '已启用' : '未启用')}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <a className="admin-url" href={site.url} target="_blank" rel="noreferrer">{site.url}</a>
+                        </td>
+                        <td className="admin-num">{formatOpenSeconds(site.open_seconds)}</td>
+                        <td>{siteCategoryText(site)}</td>
+                        <td className="admin-num">{formatMonthlyVisits(site.monthly_visits)}</td>
+                        <td>
+                          <div className="admin-actions">
+                            {site.is_deleted ? (
+                              <>
+                                <button className="admin-btn success" type="button" disabled={busy} onClick={() => restoreDeletedSite(site)}>恢复</button>
+                                <button className="admin-btn danger" type="button" disabled={busy} onClick={() => purgeSite(site)}>彻底删除</button>
+                              </>
+                            ) : (
+                              <>
+                                {fields.is_enabled !== false ? (
+                                  <button
+                                    className={`admin-btn ${site.is_enabled ? 'warn' : 'success'}`}
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() => toggleSiteEnabled(site)}
+                                  >
+                                    {site.is_enabled ? '停用' : '启用'}
+                                  </button>
+                                ) : null}
+                                <button className="admin-btn" type="button" onClick={() => openEditor(site)}>编辑</button>
+                                <button className="admin-btn danger" type="button" disabled={busy} onClick={() => removeSite(site)}>删除</button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
               {!loading && !sites.length ? <p className="admin-note">没有匹配的网址。</p> : null}
               <Pager offset={siteOffset} total={siteTotal} pageSize={sitePage} onPage={setSiteOffset} />
