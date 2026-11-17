@@ -494,8 +494,14 @@ function site(){
             req.open('post','/home/user/clogin',true);//异步
             fd.append("bodyWidth",bodyWidth);
             var navCategories=(typeof readNavCategories==='function') ? readNavCategories() : [];
-            // 始终带上，空数组表示「默认」，避免服务端回退到旧的 nav_categories
-            fd.append('categories', JSON.stringify(navCategories));
+            // 只把分享态传给服务端；系统分类不再作为首页偏好
+            var shareOnly=[];
+            for(var ni=0;ni<navCategories.length;ni++){
+                if(navCategories[ni]==='navshare' || navCategories[ni]==='catshare'){
+                    shareOnly.push(navCategories[ni]);
+                }
+            }
+            fd.append('categories', JSON.stringify(shareOnly));
             req.onreadystatechange=function(){
                 if(req.readyState==4 && req.status==200){
                     if(requestId!==navRequestId){
@@ -519,14 +525,12 @@ function site(){
                                 writeStoredCategory(userData['bg_category']);
                             }
                         }
-                        // 切分类刷新图标时不要用服务端旧偏好盖掉刚选的分类；
-                        // 本地为空时同步服务端；服务端已清空（分类被删）时也清掉本地旧代号
-                        if(!iconsOnly && Array.isArray(userData['nav_categories']) && typeof writeNavCategories==='function'){
-                            var localNav=(typeof readNavCategories==='function') ? readNavCategories() : [];
-                            var serverNav=userData['nav_categories']||[];
-                            if(!localNav.length){
-                                writeNavCategories(serverNav.length ? serverNav : ['default']);
-                            }else if(!serverNav.length && localNav[0] && localNav[0]!=='default' && localNav[0]!=='catshare' && localNav[0]!=='navshare' && String(localNav[0]).indexOf('u-')!==0){
+                        // 清除旧的系统分类偏好；保留分享态临时代号
+                        if(!iconsOnly && typeof writeNavCategories==='function' && typeof readNavCategories==='function'){
+                            var localNav=readNavCategories()||[];
+                            if(localNav[0]==='catshare' || localNav[0]==='navshare'){
+                                /* keep */
+                            }else if(localNav[0] && localNav[0]!=='default'){
                                 writeNavCategories(['default']);
                             }
                         }
@@ -723,9 +727,11 @@ function site(){
             return;
         }
         var cats=Array.isArray(window.__jfSiteCategories) ? window.__jfSiteCategories : [];
-        var html='<option value="">未分类（首页图标）</option>';
+        var html='<option value="">默认合集（首页）</option>';
         for(var i=0;i<cats.length;i++){
-            html+='<option value="'+cats[i].id+'">'+String(cats[i].name||'').replace(/</g,'')+'</option>';
+            var label=String(cats[i].name||'').replace(/</g,'');
+            if(cats[i].is_default){ label+=' · 默认'; }
+            html+='<option value="'+cats[i].id+'">'+label+'</option>';
         }
         oNssCategorySelect.innerHTML=html;
         oNssCategorySelect.value=selectedId ? String(selectedId) : '';
@@ -773,80 +779,11 @@ function site(){
 
     function manageSiteCategories(){
         if(!(userData && Number(userData.user_type)===1)){
-            showmsg('登录后可管理个人分类');
+            showmsg('登录后可管理合集');
             return;
         }
-        var action=window.prompt('输入：新建 / 重命名 / 删除','新建');
-        if(action==null){
-            return;
-        }
-        action=String(action).trim();
-        if(action==='新建' || action==='创建' || action==='add'){
-            var name=window.prompt('新分类名称','');
-            if(name==null || !String(name).trim()){
-                return;
-            }
-            postSiteCategory({action:'create', name:String(name).trim()}, function(status, data){
-                if(data.error){
-                    showmsg(data.error);
-                    return;
-                }
-                showmsg('已创建分类');
-                refreshSiteCategories();
-            });
-            return;
-        }
-        refreshSiteCategories(function(){
-            var cats=Array.isArray(window.__jfSiteCategories) ? window.__jfSiteCategories : [];
-            if(!cats.length){
-                showmsg('还没有个人分类');
-                return;
-            }
-            var lines=[];
-            for(var i=0;i<cats.length;i++){
-                lines.push((i+1)+'. '+cats[i].name);
-            }
-            var pick=window.prompt('选择分类编号：\n'+lines.join('\n'),'1');
-            if(pick==null){
-                return;
-            }
-            var index=Number.parseInt(pick,10)-1;
-            if(!(index>=0 && index<cats.length)){
-                showmsg('编号不正确');
-                return;
-            }
-            var cat=cats[index];
-            if(action==='重命名' || action==='改名' || action==='rename'){
-                var next=window.prompt('新名称', cat.name||'');
-                if(next==null || !String(next).trim()){
-                    return;
-                }
-                postSiteCategory({action:'update', id:cat.id, name:String(next).trim()}, function(status, data){
-                    if(data.error){
-                        showmsg(data.error);
-                        return;
-                    }
-                    showmsg('已重命名');
-                    refreshSiteCategories();
-                });
-                return;
-            }
-            if(action==='删除' || action==='delete'){
-                if(!window.confirm('删除分类「'+cat.name+'」后，其中的网址会回到未分类。确定删除？')){
-                    return;
-                }
-                postSiteCategory({action:'delete', id:cat.id}, function(status, data){
-                    if(data.error){
-                        showmsg(data.error);
-                        return;
-                    }
-                    showmsg('已删除分类');
-                    refreshSiteCategories();
-                });
-                return;
-            }
-            showmsg('请输入：新建 / 重命名 / 删除');
-        });
+        // 合集统一到内页管理（新建 / 设默认 / 分享）
+        location.href='/my-sites';
     }
 
     var manageSiteCatBtn=document.getElementById('manageSiteCat-btn');

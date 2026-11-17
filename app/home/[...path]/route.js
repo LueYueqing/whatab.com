@@ -27,11 +27,15 @@ import {
   deleteUserSiteById,
   deleteUserSiteCategory,
   editUserSite,
+  ensureDefaultCollection,
   ensureUserHomeSites,
+  getDefaultCollection,
+  importCategoryIntoDefault,
   listUserHomeSites,
   listUserSiteCategories,
   listUserSites,
   resetUserSites,
+  setDefaultCollection,
   sortUserSites,
   updateUserSiteCategory,
 } from '../../../lib/user-sites';
@@ -65,7 +69,6 @@ import {
   handleCategoryShare,
   listSharedCategorySites,
   parsePersonalNavCode,
-  personalNavCode,
 } from '../../../lib/category-shares';
 import { ensureNavSiteExtras, navSiteEnabledSql } from '../../../lib/admin';
 import {
@@ -202,50 +205,22 @@ function safeCategory(value) {
 
 async function homepageSiteData(user, categories, request = null) {
   const selected = readCategoryList(categories);
+  // 仅分享态可临时覆盖首页；系统分类不再作为首页偏好
   if (selected[0] === NAVSHARE_CODE && request) {
     const navShare = await homeShareFromRequest(request).catch(() => null);
     if (!navShare || navShare.stopped) return [];
     return listSharedHomeSites(navShare, 18);
   }
-  if (selected.length) {
-    const code = selected[0];
-    if (code === CATSHARE_CODE && request) {
-      const share = await categoryShareFromRequest(request).catch(() => null);
-      if (!share || share.stopped) return [];
-      const rows = await listSharedCategorySites(share, 0, 18);
-      return rows.map((item, index) => ({
-        sort: index,
-        title: item.title,
-        url: item.url,
-        icon: item.icon,
-      }));
-    }
-    const personalCode = parsePersonalNavCode(code);
-    if (personalCode) {
-      if (!user) return listDefaultHomeSites(null);
-      try {
-        const cats = await listUserSiteCategories(user.id);
-        const found = cats.find((item) => item.code === personalCode);
-        if (!found) return listDefaultHomeSites(user);
-        const rows = await listUserSites(user.id, { categoryId: found.id });
-        if (!rows.length) return listDefaultHomeSites(user);
-        return rows.slice(0, 18).map((item, index) => ({
-          sort: index,
-          title: item.title,
-          url: item.url,
-          icon: item.icon,
-        }));
-      } catch {
-        return listDefaultHomeSites(user);
-      }
-    }
-    if (selected[0] === DEFAULT_HOME_CATEGORY) {
-      return listDefaultHomeSites(user);
-    }
-    const rows = await listNavSites(0, selected);
-    // 分类已被删或不存在启用网址时，回落到默认清单，避免首页空白
-    if (!rows.length) return listDefaultHomeSites(user);
-    return rows;
+  if (selected[0] === CATSHARE_CODE && request) {
+    const share = await categoryShareFromRequest(request).catch(() => null);
+    if (!share || share.stopped) return [];
+    const rows = await listSharedCategorySites(share, 0, 18);
+    return rows.map((item, index) => ({
+      sort: index,
+      title: item.title,
+      url: item.url,
+      icon: item.icon,
+    }));
   }
   return listDefaultHomeSites(user);
 }
@@ -253,11 +228,10 @@ async function homepageSiteData(user, categories, request = null) {
 async function listDefaultHomeSites(user) {
   if (user) {
     try {
-      // 未选其它分类时：未分类个人网址进首页图标区；有分类的留给分类栏
-      const personal = await listUserSites(user.id, { uncategorizedOnly: true });
+      const personal = await listUserHomeSites(user.id);
       if (personal.length) return personal;
     } catch {
-      /* 个人网址读失败时仍显示公共默认清单 */
+      /* 个人合集读失败时仍显示公共默认清单 */
     }
   }
   await seedDefaultHomeSitesIfEmpty().catch(() => {});
@@ -287,31 +261,21 @@ async function listNavCategoriesForHome(request, user) {
       category_note: `分享主页·${navShare.nickname || '微信用户'}`,
       total: 0,
       shared: 1,
+      importable: 0,
     });
   }
   const share = await categoryShareFromRequest(request).catch(() => null);
   if (share && !share.stopped) {
     out.push({
       category: CATSHARE_CODE,
-      category_note: `分享·${share.title || '分类'}`,
+      category_note: `分享·${share.title || '合集'}`,
       total: 0,
       shared: 1,
+      importable: 0,
     });
   }
-  if (user) {
-    const cats = await homepageSiteCategories(user);
-    for (const cat of cats) {
-      const sites = await listUserSites(user.id, { categoryId: cat.id });
-      out.push({
-        category: personalNavCode(cat.code),
-        category_note: `我的：${cat.name}`,
-        total: sites.length,
-        personal: 1,
-        category_id: cat.id,
-      });
-    }
-  }
-  return out.concat(rows);
+  // 个人合集改由「我的网址」管理，不再出现在首页分类弹窗里切首页
+  return out.concat(rows.map((row) => ({ ...row, importable: 1 })));
 }
 
 async function listNavSitesForHome(request, user, category, offset) {
@@ -744,10 +708,10 @@ async function handle(request, context) {
 
   if (key === '/home/user/clogin' || key === '/home/user/login') {
     const fields = await readFields(request);
-    const hasCategories = Object.prototype.hasOwnProperty.call(fields, 'categories');
+    // 仅分享态（navshare/catshare）可临时覆盖；系统分类偏好已废弃
     const requested = readCategoryList(fields.categories);
-    const categories = hasCategories ? requested : (user?.nav_categories || []);
-    data.siteData = await homepageSiteData(user, categories, request);
+    const shareOnly = requested.filter((code) => code === NAVSHARE_CODE || code === CATSHARE_CODE);
+    data.siteData = await homepageSiteData(user, shareOnly, request);
     data.siteCategories = await homepageSiteCategories(user);
     const response = NextResponse.json(data);
     const token = readSessionToken(request);
@@ -793,13 +757,10 @@ async function handle(request, context) {
   }
   if (key === '/home/site/getsite') {
     const fields = await readFields(request);
-    const categories = readCategoryList(fields.categories);
+    const requested = readCategoryList(fields.categories);
+    const shareOnly = requested.filter((code) => code === NAVSHARE_CODE || code === CATSHARE_CODE);
     return NextResponse.json({
-      siteData: await homepageSiteData(
-        user,
-        categories.length ? categories : (user?.nav_categories || []),
-        request,
-      ),
+      siteData: await homepageSiteData(user, shareOnly, request),
       siteCategories: await homepageSiteCategories(user),
       uiData: data.uiData,
     });
@@ -810,7 +771,11 @@ async function handle(request, context) {
     const action = String(fields.action || 'list').trim();
     try {
       if (action === 'list') {
-        return NextResponse.json({ categories: await listUserSiteCategories(user.id) });
+        await ensureDefaultCollection(user.id).catch(() => null);
+        return NextResponse.json({
+          categories: await listUserSiteCategories(user.id),
+          default: await getDefaultCollection(user.id).catch(() => null),
+        });
       }
       if (action === 'create') {
         const category = await createUserSiteCategory(user.id, fields);
@@ -818,6 +783,10 @@ async function handle(request, context) {
       }
       if (action === 'update') {
         const category = await updateUserSiteCategory(user.id, fields);
+        return NextResponse.json({ success: 1, category });
+      }
+      if (action === 'set-default') {
+        const category = await setDefaultCollection(user.id, fields.id);
         return NextResponse.json({ success: 1, category });
       }
       if (action === 'delete') {
@@ -840,9 +809,30 @@ async function handle(request, context) {
     const fallback = await defaultHomeFallback(user);
     try {
       if (action === 'list') {
+        const collectionId = fields.category_id != null && fields.category_id !== ''
+          ? Number(fields.category_id)
+          : null;
+        if (collectionId) {
+          const cats = await listUserSiteCategories(user.id);
+          const found = cats.find((item) => item.id === collectionId);
+          if (!found) return NextResponse.json({ error: '没有找到这个合集' });
+          const sites = await listUserSites(user.id, { categoryId: collectionId });
+          return NextResponse.json({
+            sites,
+            owned: true,
+            collection: found,
+            categories: cats,
+          });
+        }
         const personal = await listUserHomeSites(user.id);
+        const collection = await getDefaultCollection(user.id).catch(() => null);
         if (personal.length) {
-          return NextResponse.json({ sites: personal, owned: true });
+          return NextResponse.json({
+            sites: personal,
+            owned: true,
+            collection,
+            categories: await listUserSiteCategories(user.id),
+          });
         }
         // 未改过：只预览系统默认，不写库
         const preview = (Array.isArray(fallback) ? fallback : []).map((item, index) => ({
@@ -856,26 +846,33 @@ async function handle(request, context) {
         return NextResponse.json({
           sites: preview,
           owned: false,
-          note: '当前是系统默认预览；增删后会复制成你的个人主页，不会改系统导航。',
+          collection,
+          categories: await listUserSiteCategories(user.id).catch(() => []),
+          note: '当前是系统默认预览；增删或从分类追加后会写入「我的合集」，不会改系统导航。',
         });
       }
       if (action === 'add') {
         await ensureUserHomeSites(user.id, fallback);
+        const collection = await getDefaultCollection(user.id);
+        const targetId = fields.category_id != null && fields.category_id !== ''
+          ? Number(fields.category_id)
+          : collection.id;
         const nextUrl = cleanSiteUrl(fields.url);
-        const current = await listUserHomeSites(user.id);
+        const current = await listUserSites(user.id, { categoryId: targetId });
         if (nextUrl && current.some((item) => cleanSiteUrl(item.url) === nextUrl)) {
-          return NextResponse.json({ error: '这个网址已经在默认主页里了' });
+          return NextResponse.json({ error: '这个网址已经在合集里了' });
         }
         const saved = await createUserSite(user.id, {
           title: fields.title,
           url: fields.url,
           icon: fields.icon,
-          category_id: '',
+          category_id: targetId,
         }, null, fallback);
         return NextResponse.json({
           ...saved,
           owned: true,
-          sites: await listUserHomeSites(user.id),
+          sites: await listUserSites(user.id, { categoryId: targetId }),
+          collection: await getDefaultCollection(user.id),
         });
       }
       if (action === 'remove') {
@@ -889,11 +886,16 @@ async function handle(request, context) {
           siteId = found?.id;
         }
         const removed = await deleteUserSiteById(user.id, siteId, fallback);
+        const collection = await getDefaultCollection(user.id);
+        const listId = fields.category_id != null && fields.category_id !== ''
+          ? Number(fields.category_id)
+          : collection.id;
         return NextResponse.json({
           ...removed,
           owned: true,
-          success: '已从你的默认主页移除（系统导航不受影响）',
-          sites: await listUserHomeSites(user.id),
+          success: '已从合集移除（系统导航不受影响）',
+          sites: await listUserSites(user.id, { categoryId: listId }),
+          collection,
         });
       }
     } catch (error) {
@@ -957,6 +959,36 @@ async function handle(request, context) {
     const offset = Math.max(0, Number.parseInt(fields.offset, 10) || 0);
     if (!category) return NextResponse.json([]);
     return NextResponse.json(await listNavSitesForHome(request, user, category, offset));
+  }
+  if (key === '/home/nav/import-category') {
+    if (!user) return NextResponse.json({ error: '请先微信登录' }, { status: 401 });
+    const fields = await readFields(request);
+    const category = safeCategory(fields.category);
+    if (!category || category === NAVSHARE_CODE || category === CATSHARE_CODE) {
+      return NextResponse.json({ error: '请选择可追加的系统分类' });
+    }
+    if (parsePersonalNavCode(category)) {
+      return NextResponse.json({ error: '个人合集请在「我的网址」里管理' });
+    }
+    try {
+      const fallback = await defaultHomeFallback(user);
+      await ensureDefaultCollection(user.id);
+      // 取该分类全部启用网址（上限 200），追加进默认合集
+      const source = await listNavCategorySites(category, 0, 200);
+      const result = await importCategoryIntoDefault(user.id, source, fallback);
+      return NextResponse.json({
+        success: 1,
+        added: result.added,
+        skipped: result.skipped,
+        message: result.added
+          ? `已追加 ${result.added} 个网址到默认合集`
+          : (result.skipped ? '这些网址已在默认合集里' : '这个分类还没有可追加的网址'),
+        sites: result.sites,
+        collection: await getDefaultCollection(user.id),
+      });
+    } catch (error) {
+      return NextResponse.json({ error: error.expose ? error.message : '追加失败，请稍后再试' });
+    }
   }
   if (key === '/home/bg/categories') {
     return NextResponse.json(await listCategories(user, await wallpaperShare(request, user)));

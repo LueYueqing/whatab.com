@@ -29,12 +29,14 @@ function siteKey(site) {
 
 export default function EditHomeSites() {
   const [sites, setSites] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [activeId, setActiveId] = useState(null);
   const [owned, setOwned] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [messageBad, setMessageBad] = useState(false);
-  const [modal, setModal] = useState(''); // '' | 'search' | 'manual'
+  const [modal, setModal] = useState(''); // '' | 'search' | 'manual' | 'new-collection'
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -45,19 +47,34 @@ export default function EditHomeSites() {
   const [title, setTitle] = useState('');
   const [icon, setIcon] = useState(DEFAULT_ICON);
   const [collecting, setCollecting] = useState(false);
+  const [newName, setNewName] = useState('');
   const collectTimer = useRef(null);
   const collectSeq = useRef(0);
+
+  const active = categories.find((item) => item.id === activeId) || null;
+  const isDefault = Boolean(active?.is_default);
 
   function note(text, bad = false) {
     setMessage(text);
     setMessageBad(bad);
   }
 
-  async function loadSites() {
-    const data = await postJson('/home/site/home', { action: 'list' });
+  async function loadSites(categoryId) {
+    const payload = { action: 'list' };
+    if (categoryId) payload.category_id = categoryId;
+    const data = await postJson('/home/site/home', payload);
+    const nextCategories = Array.isArray(data.categories) ? data.categories : [];
+    setCategories(nextCategories);
     setSites(Array.isArray(data.sites) ? data.sites : []);
     setOwned(Boolean(data.owned));
+    const nextActive = data.collection?.id
+      || categoryId
+      || nextCategories.find((item) => item.is_default)?.id
+      || nextCategories[0]?.id
+      || null;
+    setActiveId(nextActive);
     if (data.note) note(data.note);
+    return data;
   }
 
   useEffect(() => {
@@ -80,6 +97,94 @@ export default function EditHomeSites() {
   useEffect(() => () => {
     if (collectTimer.current) clearTimeout(collectTimer.current);
   }, []);
+
+  async function selectCollection(id) {
+    if (!id || id === activeId) return;
+    setBusy(true);
+    note('');
+    try {
+      await loadSites(id);
+    } catch (error) {
+      note(error.message, true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createCollection(event) {
+    event?.preventDefault?.();
+    const name = String(newName || '').trim();
+    if (!name) {
+      note('请填写合集名称', true);
+      return;
+    }
+    setBusy(true);
+    note('');
+    try {
+      const data = await postJson('/home/site/categories', { action: 'create', name });
+      setModal('');
+      setNewName('');
+      await loadSites(data.category?.id);
+      note(`已创建合集「${data.category?.name || name}」`);
+    } catch (error) {
+      note(error.message, true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function renameCollection() {
+    if (!active) return;
+    const name = window.prompt('合集名称', active.name || '');
+    if (name == null) return;
+    const next = String(name).trim();
+    if (!next) {
+      note('请填写合集名称', true);
+      return;
+    }
+    setBusy(true);
+    note('');
+    try {
+      await postJson('/home/site/categories', { action: 'update', id: active.id, name: next });
+      await loadSites(active.id);
+      note('已重命名合集');
+    } catch (error) {
+      note(error.message, true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function makeDefault() {
+    if (!active || active.is_default) return;
+    setBusy(true);
+    note('');
+    try {
+      await postJson('/home/site/categories', { action: 'set-default', id: active.id });
+      await loadSites(active.id);
+      note(`已将「${active.name}」设为默认合集，首页将显示这里的网址`);
+    } catch (error) {
+      note(error.message, true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeCollection() {
+    if (!active) return;
+    if (!window.confirm(`删除合集「${active.name}」会同时删掉其中的网址。确定删除？`)) return;
+    setBusy(true);
+    note('');
+    try {
+      await postJson('/home/site/categories', { action: 'delete', id: active.id });
+      await loadSites();
+      note('已删除合集');
+    } catch (error) {
+      note(error.message, true);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function search(event) {
     event?.preventDefault?.();
@@ -113,10 +218,12 @@ export default function EditHomeSites() {
         title: payload.title,
         url: payload.url,
         icon: payload.icon || DEFAULT_ICON,
+        category_id: activeId || '',
       });
       setSites(Array.isArray(data.sites) ? data.sites : []);
       setOwned(true);
-      note(data.success || '已加入你的默认主页');
+      if (Array.isArray(data.categories)) setCategories(data.categories);
+      note(data.success || '已加入合集');
       setModal('');
     } catch (error) {
       note(error.message, true);
@@ -127,8 +234,8 @@ export default function EditHomeSites() {
 
   async function removeSite(site) {
     const tip = owned
-      ? '从你的默认主页移除这个网址？系统导航不会被删。'
-      : '将先复制系统默认为你的个人主页，再移除这一项。系统导航不会被改。继续？';
+      ? '从当前合集移除这个网址？系统导航不会被删。'
+      : '将先复制系统默认为「我的合集」，再移除这一项。系统导航不会被改。继续？';
     if (!window.confirm(tip)) return;
     setBusy(true);
     note('');
@@ -137,6 +244,7 @@ export default function EditHomeSites() {
         action: 'remove',
         id: site.id,
         url: site.url,
+        category_id: activeId || '',
       });
       setSites(Array.isArray(data.sites) ? data.sites : []);
       setOwned(true);
@@ -210,7 +318,7 @@ export default function EditHomeSites() {
   }
 
   if (!ready) {
-    return <p className="edit-home-note">正在读取你的默认主页…</p>;
+    return <p className="edit-home-note">正在读取你的合集…</p>;
   }
 
   return (
@@ -220,11 +328,64 @@ export default function EditHomeSites() {
       ) : null}
 
       <section className="edit-home-section">
-        <h2>当前默认主页</h2>
+        <h2>我的合集</h2>
+        <p className="edit-home-note">
+          首页只显示默认合集。可新建多个合集，并把任意一个设为默认；也可在首页「网站分类」里点 + 把系统分类追加进默认合集。
+        </p>
+        <div className="edit-home-actions" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
+          {categories.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`inner-btn${item.id === activeId ? ' primary' : ''}`}
+              disabled={busy}
+              onClick={() => selectCollection(item.id)}
+            >
+              {item.name}{item.is_default ? ' · 默认' : ''}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="inner-btn"
+            disabled={busy}
+            onClick={() => {
+              setNewName('');
+              setModal('new-collection');
+            }}
+          >
+            新建合集
+          </button>
+        </div>
+        {active ? (
+          <div className="edit-home-actions" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
+            {!isDefault ? (
+              <button type="button" className="inner-btn primary" disabled={busy} onClick={makeDefault}>
+                设为默认合集
+              </button>
+            ) : null}
+            <button type="button" className="inner-btn" disabled={busy} onClick={renameCollection}>
+              重命名
+            </button>
+            <button
+              type="button"
+              className="inner-btn danger"
+              disabled={busy || categories.length <= 1}
+              onClick={removeCollection}
+            >
+              删除合集
+            </button>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="edit-home-section">
+        <h2>{active ? active.name : '合集网址'}{isDefault ? '（首页默认）' : ''}</h2>
         <p className="edit-home-note">
           {owned
-            ? '这是你的个人默认主页，会出现在首页图标区。移除只影响你自己，不会改系统导航。'
-            : '当前是系统默认预览。增删后会复制成你的个人主页，系统导航不会被改。'}
+            ? (isDefault
+              ? '这是默认合集，会出现在首页图标区。移除只影响你自己，不会改系统导航。'
+              : '这是普通合集。设为默认后，首页会改显示这里的网址。')
+            : '当前是系统默认预览。增删后会写入「我的合集」，系统导航不会被改。'}
         </p>
         <div className="edit-home-actions" style={{ marginBottom: 12 }}>
           <button type="button" className="inner-btn primary" disabled={busy} onClick={openSearch}>
@@ -245,7 +406,7 @@ export default function EditHomeSites() {
               <button
                 type="button"
                 className="inner-btn danger"
-                disabled={busy || (owned && sites.length <= 1)}
+                disabled={busy || (owned && isDefault && sites.length <= 1)}
                 onClick={() => removeSite(site)}
               >
                 移除
@@ -265,9 +426,35 @@ export default function EditHomeSites() {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="edit-home-modal-head">
-              <strong>{modal === 'search' ? '从系统搜索加入' : '自行录入'}</strong>
+              <strong>
+                {modal === 'search'
+                  ? '从系统搜索加入'
+                  : modal === 'manual'
+                    ? '自行录入'
+                    : '新建合集'}
+              </strong>
               <button type="button" className="inner-btn" onClick={() => setModal('')}>关闭</button>
             </div>
+
+            {modal === 'new-collection' ? (
+              <form className="edit-home-manual" onSubmit={createCollection}>
+                <label>
+                  合集名称
+                  <input
+                    value={newName}
+                    onChange={(event) => setNewName(event.target.value)}
+                    placeholder="例如：工作常用"
+                    autoFocus
+                    required
+                  />
+                </label>
+                <div className="edit-home-actions">
+                  <button className="inner-btn primary" type="submit" disabled={busy}>
+                    创建
+                  </button>
+                </div>
+              </form>
+            ) : null}
 
             {modal === 'search' ? (
               <>
@@ -310,7 +497,9 @@ export default function EditHomeSites() {
                   })}
                 </div>
               </>
-            ) : (
+            ) : null}
+
+            {modal === 'manual' ? (
               <>
                 <p className="edit-home-note">输入网址后会自动采集名称和图标，也可再改。</p>
                 <form className="edit-home-manual" onSubmit={submitManual}>
@@ -342,7 +531,7 @@ export default function EditHomeSites() {
                   </div>
                   <div className="edit-home-actions">
                     <button className="inner-btn primary" type="submit" disabled={busy || collecting}>
-                      添加到默认主页
+                      添加到合集
                     </button>
                     <button
                       className="inner-btn"
@@ -355,7 +544,7 @@ export default function EditHomeSites() {
                   </div>
                 </form>
               </>
-            )}
+            ) : null}
           </div>
         </div>
       ) : null}

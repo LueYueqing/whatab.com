@@ -6,8 +6,8 @@ import ShareHome from './ShareHome';
 import ToolTabs from './ToolTabs';
 
 const TABS = [
-  ['sites', '默认主页'],
-  ['share', '分享主页'],
+  ['sites', '我的合集'],
+  ['share', '分享默认合集'],
 ];
 
 export default function MySitesHome() {

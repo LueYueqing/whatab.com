@@ -673,6 +673,7 @@ $('#console-title-box').click(function(){
                 $('#console-menu').hide();
                 $('#nav-category-panel').css('display','flex');
                 openNavCategories();
+                setNavSiteStatus('浏览分类预览；点 + 追加到「我的合集」，首页原有网址保留。');
                 break;
             case 'bgset-upload':
                 setState='bg';
@@ -1175,6 +1176,14 @@ $('#console-title-box').click(function(){
         }
     }
 
+    function canImportNavCategory(item){
+        var code=item && item.category ? String(item.category) : '';
+        if(!code || code==='catshare' || code==='navshare') return false;
+        if(/^u-/.test(code)) return false;
+        if(item && Number(item.importable)===0) return false;
+        return true;
+    }
+
     function renderNavCategoryList(){
         var list=document.getElementById('nav-category-list');
         list.innerHTML='';
@@ -1182,17 +1191,38 @@ $('#console-title-box').click(function(){
         for(var d=0;d<navCategoryList.length;d++){
             if(navCategoryList[d].category==='default'){ hasDefault=true; break; }
         }
-        var items=(hasDefault?[]:[{category:'default', category_note:'默认', total:0}]).concat(navCategoryList);
+        var items=(hasDefault?[]:[{category:'default', category_note:'默认', total:0, importable:1}]).concat(navCategoryList);
         for(var i=0;i<items.length;i++){
             var item=items[i];
             var row=document.createElement('div');
             row.className='nav-category-item'+(item.category===navViewCategory?' active':'');
-            row.textContent=item.category_note;
             row.title=item.total ? item.category_note+' '+item.total+' 个' : item.category_note;
             row.dataset.category=item.category;
-            row.onclick=function(){
-                chooseNavCategory(this.dataset.category||'');
+
+            var label=document.createElement('button');
+            label.type='button';
+            label.className='nav-category-label';
+            label.textContent=item.category_note;
+            label.onclick=function(ev){
+                ev.preventDefault();
+                chooseNavCategory(this.parentNode.dataset.category||'');
             };
+            row.appendChild(label);
+
+            if(canImportNavCategory(item)){
+                var plus=document.createElement('button');
+                plus.type='button';
+                plus.className='nav-category-add';
+                plus.textContent='+';
+                plus.title='追加到我的合集';
+                plus.setAttribute('aria-label','追加到我的合集');
+                plus.onclick=function(ev){
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    importNavCategory(this.parentNode.dataset.category||'');
+                };
+                row.appendChild(plus);
+            }
             list.appendChild(row);
         }
         updateCatShareToolbar();
@@ -1210,11 +1240,42 @@ $('#console-title-box').click(function(){
         document.getElementById('nav-site-list').innerHTML='';
         document.getElementById('nav-site-pane').scrollTop=0;
         if(!navViewCategory){
-            setNavSiteStatus('当前使用首页原来的网站。点左侧分类可查看并记住。');
+            setNavSiteStatus('点左侧分类可预览；点 + 追加到「我的合集」，不会替换首页。');
             return;
         }
         setNavSiteStatus('加载中……');
         loadNavSites();
+    }
+
+    function importNavCategory(category){
+        if(!category || !/^[a-z0-9-]{1,40}$/.test(category)){
+            return;
+        }
+        if(!(window.__jfUser && Number(window.__jfUser.user_type)===1)){
+            location.href='/wechat/login?next=/';
+            return;
+        }
+        setNavSiteStatus('正在追加……');
+        var fd=new FormData();
+        fd.append('category', category);
+        var req=new XMLHttpRequest();
+        req.open('POST','/home/nav/import-category',true);
+        req.onreadystatechange=function(){
+            if(req.readyState!==4){
+                return;
+            }
+            var data={};
+            try{ data=JSON.parse(req.response||'{}'); }catch(e){}
+            if(req.status!==200 || data.error){
+                setNavSiteStatus(data.error || '追加失败');
+                return;
+            }
+            setNavSiteStatus(data.message || ('已追加 '+(data.added||0)+' 个'));
+            if(window.reloadNavSites){
+                window.reloadNavSites();
+            }
+        };
+        req.send(fd);
     }
 
     function appendNavSites(rows){
@@ -1296,17 +1357,10 @@ $('#console-title-box').click(function(){
         if(nextCategory===navViewCategory && document.getElementById('nav-site-list').children.length){
             return;
         }
+        // 仅预览弹窗内列表，不写偏好、不刷新首页图标
         navViewCategory=nextCategory;
-        navCategoriesSelected=[navViewCategory];
-        writeNavCategories(navCategoriesSelected);
-        if(navViewCategory!=='catshare' && navViewCategory!=='navshare'){
-            saveUserPref({nav_categories: JSON.stringify(navCategoriesSelected)});
-        }
         renderNavCategoryList();
         resetNavSites();
-        if(window.reloadNavSites){
-            window.reloadNavSites();
-        }
     }
 
     function bindNavSiteScroll(){
@@ -1323,31 +1377,17 @@ $('#console-title-box').click(function(){
     }
 
     function syncNavCategorySelection(){
+        // 弹窗预览默认落在「默认」；分享态才跟本地临时代号
         var code=readNavCategories()[0]||'default';
-        if(code==='catshare' || code==='navshare' || /^u-/.test(code)){
-            navCategoriesSelected=[code];
+        if(code==='catshare' || code==='navshare'){
             navViewCategory=code;
             return false;
         }
-        var found=false;
-        for(var i=0;i<navCategoryList.length;i++){
-            if(navCategoryList[i].category===code){
-                found=true;
-                break;
-            }
-        }
-        if(!found){
+        navViewCategory='default';
+        // 清掉旧的系统分类偏好，避免再次被当成首页开关
+        if(code && code!=='default' && !/^u-/.test(code)){
             writeNavCategories(['default']);
-            saveUserPref({nav_categories: JSON.stringify(['default'])});
-            navCategoriesSelected=['default'];
-            navViewCategory='default';
-            if(window.reloadNavSites){
-                window.reloadNavSites();
-            }
-            return true;
         }
-        navCategoriesSelected=[code];
-        navViewCategory=code;
         return false;
     }
 

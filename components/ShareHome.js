@@ -14,7 +14,7 @@ async function postJson(path, body) {
   return data;
 }
 
-/** 分享「我的默认主页」图标清单（不是分类、不是壁纸） */
+/** 分享当前默认合集的图标清单（不是壁纸） */
 export default function ShareHome() {
   const [shares, setShares] = useState([]);
   const [ready, setReady] = useState(false);
@@ -56,7 +56,7 @@ export default function ShareHome() {
     try {
       await postJson('/home/navshare/create');
       await load();
-      note('已生成主页分享链接。对方打开后会看到你当前的默认主页图标（实时同步）。');
+      note('已生成分享链接。对方打开后会看到你当前默认合集的图标（实时同步）。');
     } catch (error) {
       note(error.message, true);
     } finally {
@@ -105,9 +105,9 @@ export default function ShareHome() {
   return (
     <div className="share-panel">
       <p className="share-note">
-        分享你在「默认主页」里编辑后的图标清单。对方打开
+        分享你当前的默认合集。对方打开
         <code> ?nav= </code>
-        链接后，首页图标区会显示你的主页内容，并随你的修改实时同步。不会改对方自己的账号数据。
+        链接后，首页图标区会显示该合集内容，并随你修改实时同步。不会改对方自己的账号数据。
       </p>
       <button
         className="share-btn primary"
@@ -115,7 +115,7 @@ export default function ShareHome() {
         onClick={createShare}
         disabled={busy}
       >
-        创建主页分享链接
+        创建默认合集分享链接
       </button>
 
       {message ? <p className={messageBad ? 'share-message bad' : 'share-message'}>{message}</p> : null}
