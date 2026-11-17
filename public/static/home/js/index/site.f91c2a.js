@@ -544,21 +544,11 @@ function site(){
                         var headImg=String(userData['user_headimg']||'/static/home/images/console/userhead.svg');
                         $('.user-head')[0].style.backgroundImage="url('"+headImg.replace('http://',"https://")+"')";
                         $('.user-name')[0].innerHTML=userData['user_name'];
-                        var adminMenu=document.getElementById('console-menu-main');
-                        if(Number(userData['is_admin'])===1 && adminMenu && !document.getElementById('admin-entry')){
-                            var adminLink=document.createElement('a');
-                            adminLink.id='admin-entry';
-                            adminLink.className='console-menu-btn';
-                            adminLink.href='/admin/sites';
-                            adminLink.textContent='管理网址和壁纸';
-                            adminLink.style.textDecoration='none';
-                            adminLink.style.color='inherit';
-                            adminMenu.appendChild(adminLink);
-                        }
+                        // 管理网址和壁纸仅走 /admin，不在「自定义」侧栏展示
                         $('#signout-btn')[0].style.display='inline-block';
-                        $('.console-menu-btn').attr("data-usertype","1");
-                        $('.menu-item').attr("data-usertype","1");                        
+                        $('.menu-item').attr("data-usertype","1");
                         $('#engineSetBtn').attr("data-usertype","1");
+                        $('#user-box').attr('data-usertype','1');
                     }
                 }	    	
                 

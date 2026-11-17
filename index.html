@@ -49,7 +49,7 @@
             <div class="menu-item console-downloadcurrent-btn">下载当前壁纸</div>
             <div class="menu-item console-randbg-btn">随机壁纸</div>
             <div class="menu-item console-bgset-btn">设置壁纸</div>
-            <div class="menu-item console-navcat-btn">网站分类</div>
+            <div class="menu-item console-navcat-btn">添加网站</div>
         </div>
     </div>
 <!-- msg-wrap *********************-->
@@ -287,45 +287,20 @@
     <div id='console-box'>
         <div id='console-header'>
                 <div id="console-title-box">
-                    <img class='console-title-img' src="">
-                    <span class='console-title'></span>
+                    <img class='console-title-img' src="/static/home/images/console/jianfast.svg" alt="">
+                    <span class='console-title'>自定义</span>
                 </div>
-                <div id="save-box">                    
+                <div id="save-box">
                     <div id="console-save-btn"><img class='console-save-icon' src='static/home/images/console/saveicon.svg'>保存</div>
-                    <img id='console-eye-btn' src='static/home/images/console/eye.svg'>                    
-                </div>	
-                <div id='console-close-btn'></div>		
-        </div>
-        
-        <div id="console-menu">
-            <div id="console-menu-main">
-                <div id="user-box">
-                    <div class="user-head"></div>
-                    <span class='user-name'>您还未<span style='color:#4489F4;'>登录</span></span>
+                    <img id='console-eye-btn' src='static/home/images/console/eye.svg'>
                 </div>
-                
-                <div class="console-menu-btn console-bgset-btn">设置壁纸</div>
-                <div class="console-menu-btn console-navcat-btn">网站分类</div>
-                <div class="console-menu-btn console-siteset-btn">编辑图标链接</div>
-                <div class="console-menu-btn console-engineset-btn">编辑搜索引擎</div>
-                <div class="console-menu-btn console-uiset-btn">设置页面布局</div>
-                
-            </div>
-            <div id="console-bottom-btn-box">
-                <a class="console-rating btn" rel="nofollow" target="_blank" href=""><span class='console-rating-span'></span><img class='console-rating-img' src=''></a>
-                <!-- <a class="console-bottom-ad" target="_blank" href="https://bz.zzzmh.cn/?fr=jf"><img src='/static/home/images/console/jijianbizhi.jpg'></a> -->
-                
-                
-                
+                <div id='console-close-btn'></div>
+        </div>
 
-                
-                <!-- <a class="console-bottom-ad" target="_blank" href="https://t.vip.com/rKdwrNNwTi8"><img src='/static/home/images/console/nike09.jpg'></a> -->
-
-                <a class="console-bottom-btn" target="_blank" href="zhuye/index.html">设为主页</a>
-                <a class="console-bottom-btn" target="_blank" href="about/index.html">关于</a>
-                <a class="console-bottom-btn" target="_blank" href="zhinan/index.html">使用指南</a>
-                <div id="signout-btn" class="console-bottom-btn" target="_blank" href="https://baidu.com">退出登录</div>
-            </div>
+        <div id="console-tabs" role="tablist">
+            <button type="button" class="console-tab active" data-tab="bg" role="tab" aria-selected="true">壁纸</button>
+            <button type="button" class="console-tab" data-tab="add" role="tab" aria-selected="false">添加</button>
+            <button type="button" class="console-tab" data-tab="settings" role="tab" aria-selected="false">设置</button>
         </div>
 
         <div class='bg-title-box'>
@@ -369,6 +344,18 @@
         </div>
 
         <div id='console-content'>
+                <div class="console-ui-group" id="bg-interval-group">
+                    <div class='console-bigTitle'>换背景间隔</div>
+                    <label class="bg-interval-label" for="bg-interval-select">隔多久自动换一张壁纸</label>
+                    <select id="bg-interval-select" class="bg-interval-select">
+                        <option value="reopen">重新打开时</option>
+                        <option value="15">15 分钟</option>
+                        <option value="30">30 分钟</option>
+                        <option value="60">60 分钟</option>
+                    </select>
+                    <p class="bg-interval-hint">「重新打开时」只在下次进入首页换图；选分钟数后，当前页停留期间也会按间隔自动换。</p>
+                </div>
+
                 <div class="console-ui-group">
                     <div class='console-bigTitle'>页面预设值</div>
                     <div id="ui-default-box">
@@ -625,6 +612,20 @@
                     <span class='uiParams'>始终显示</span>
                 </div> -->
             
+        </div>
+
+        <div id="console-footer">
+            <div id="user-box">
+                <div class="user-head"></div>
+                <span class='user-name'>您还未<span style='color:#4489F4;'>登录</span></span>
+            </div>
+            <div id="console-bottom-btn-box">
+                <a class="console-rating btn" rel="nofollow" target="_blank" href=""><span class='console-rating-span'></span><img class='console-rating-img' src=''></a>
+                <a class="console-bottom-btn" target="_blank" href="zhuye/index.html">设为主页</a>
+                <a class="console-bottom-btn" target="_blank" href="about/index.html">关于</a>
+                <a class="console-bottom-btn" target="_blank" href="zhinan/index.html">使用指南</a>
+                <div id="signout-btn" class="console-bottom-btn">退出登录</div>
+            </div>
         </div>
 
     </div>
